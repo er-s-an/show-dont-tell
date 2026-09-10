@@ -1,0 +1,20 @@
+{
+  "name": "@sdt/cards",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Show, Don't Tell — MCP Apps card views (itinerary, comparison, confirmation).",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "preview": "vite build && echo 'cards built → dist/'"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/ext-apps": "2.0.0",
+    "@types/node": "22.10.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0",
+    "vite-plugin-singlefile": "^2.3.0"
+  }
+}

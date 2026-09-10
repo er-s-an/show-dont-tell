@@ -1,0 +1,26 @@
+{
+  "name": "show-dont-tell",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Show, Don't Tell — Alexa+ answers as interactive interfaces. MCP server (spec 2025-11-25, Streamable HTTP) + Agent Skill + experience simulator.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @sdt/cards && npm run build -w @sdt/server",
+    "start": "node packages/server/dist/index.js",
+    "dev:cards": "npm run dev -w @sdt/cards",
+    "dev:simulator": "npm run dev -w @sdt/simulator",
+    "test": "npm run build -w @sdt/server && npm test -w @sdt/server",
+    "smoke": "node scripts/smoke.mjs",
+    "e2e": "node scripts/e2e.mjs",
+    "clean": "rm -rf packages/server/dist packages/cards/dist packages/simulator/dist"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
