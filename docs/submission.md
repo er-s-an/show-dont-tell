@@ -1,28 +1,18 @@
 # Show, Don't Tell — Devpost submission text
 
-> **Read this before pasting.** Every claim below is written to be true on submission day.
-> As of **2026-09-11** four things must be finished first, or the matching sentences
-> must be deleted:
+> **Read this before pasting.** Everything below is true as of **2026-09-11**:
 >
-> 1. **`packages/simulator/` is still empty.** The "experience simulator" is designed and
->    specified but not implemented. Until it is, remove every simulator sentence from
->    the story and re-check the demo script (it assumes simulator screen capture).
-> 2. **The repo is not a git repository yet** (`git rev-parse` fails; no remote). The
->    Alexa+ track requires a **public repo with an OSI license** — `LICENSE` (MIT) exists,
->    `.gitignore` is set, but nothing is pushed.
-> 3. **No Open Source mini-challenge PR has been opened.** Only tick that box once the
->    upstream PR exists (see *Track & Mini Challenges*).
-> 4. **The server currently speaks MCP 2025-11-25, not 2026-07-28.** The installed
->    `@modelcontextprotocol/server@2.0.0` (npm `latest`) rejects a 2026-07-28 request with
->    *"Unsupported protocol version"* when the server is hand-constructed the way
->    `packages/server/src/index.ts` does it. This text is therefore written against
->    **2025-11-25**, which satisfies the track's requirement — do **not** restore a
->    2026-07-28 claim until the `createMcpHandler` migration in *What's next* is committed
->    and a live request proves it.
+> 1. **The simulator is implemented and verified** — `packages/simulator/` drives the
+>    real server, e2e golden path 6/6 (`node scripts/e2e.mjs`), demo video recorded from it.
+> 2. **Public repo with MIT license:** https://github.com/er-s-an/show-dont-tell
+> 3. **Open Source mini-challenge PR exists:** modelcontextprotocol/ext-apps#775
+>    (https://github.com/modelcontextprotocol/ext-apps/pull/775) — tick the box.
+> 4. **The server speaks MCP 2025-11-25** (the track's required minimum), served
+>    statelessly over Streamable HTTP. The 2026-07-28 migration via `createMcpHandler`
+>    is scoped in *What's next*; the SDK-era gotcha is friction-log §3.
 >
-> Verified working at the time of writing: MCP server, 6 tools, `ui://` card resource,
-> cross-session recall, two-phase booking, credential-free smoke test **11/11 passing**
-> (`node scripts/smoke.mjs` against a server started on a fresh port).
+> Verified at submission time: unit tests 30/30, protocol smoke 11/11, e2e 6/6,
+> fresh-clone judge path (install → build → test → start → smoke) all green.
 
 ---
 
@@ -282,24 +272,22 @@ Then call `plan-weekend-trip` from any MCP client and read the returned
   `packages/server/src/index.ts`.
 - Working Agent Skill delivered: `skill/show-dont-tell/SKILL.md` (name matches its
   parent directory, per the standard).
-- Repo contains the simulator source: **required by the rules** — currently outstanding
-  (see the note at the top).
+- Repo contains the simulator source: `packages/simulator/` — implemented and verified
+  (e2e 6/6); the demo video is recorded from it.
 
-### Mini challenge: **Open Source** ⚠️ conditional
+### Mini challenge: **Open Source** ✅ tick it
 
-Tick this **only if** the upstream contribution actually exists at submission time.
-The candidate is the crash we hit and diagnosed:
+The contribution exists and is public:
 
-- **Contribution:** a PR to `modelcontextprotocol/ext-apps` making `registerAppTool`
-  tolerate a missing `_meta` (`config._meta ?? {}`), or marking `_meta` required in the
-  TypeScript types so the failure is caught at compile time.
-- **Evidence to include:** the reproduction, the exact error
-  (`TypeError: Cannot read properties of undefined (reading 'ui')`, ext-apps 2.0.0),
-  and the failing request path — all recorded in `friction-log.md` §1.
-- **Rule reminder:** the contribution window is the competition window, and a new repo,
-  branch, fork or PR counts; **merge is not required**. A closed PR still qualifies.
-- **Do not tick it** for a local fork or a TODO. The rules' own bar is a real
-  contribution to a public repository.
+- **Contribution URL:** https://github.com/modelcontextprotocol/ext-apps/pull/775
+- **Project repository URL:** https://github.com/er-s-an/show-dont-tell
+- **GitHub username:** er-s-an
+- **What/why:** `registerAppTool` in `@modelcontextprotocol/ext-apps/server` crashed any
+  tool registered without `_meta` (`TypeError: Cannot read properties of undefined
+  (reading 'ui')`) — even though `ToolConfig._meta` is typed optional. We hit this crash
+  building this very project (friction-log §1), diagnosed the normalization code, and
+  shipped a one-line guard (`config._meta ?? {}`) plus a regression test. The rules
+  don't require merge — a real, reviewed-track PR to a public repo qualifies.
 
 ### Mini challenge: **AWS Builder** ⚠️ only if true
 

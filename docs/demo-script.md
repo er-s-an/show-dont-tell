@@ -21,11 +21,10 @@ fit the same windows if you record one.
 - No slides, no deck frames, no stock footage of people talking to speakers. One small
   persistent label in the corner: `Alexa+ experience simulator`.
 
-> **Before you record:** `packages/simulator/` is still empty (see `submission.md`). Shoot
-> this script once it is implemented. If it is not ready, the fallback is to record the
-> real card rendered in an MCP Apps host and overlay each typed request as a caption
-> before the card updates — same script, same timings, no claim about a simulator that
-> does not exist.
+> **Recording status (2026-09-11):** the simulator is implemented and the video has been
+> auto-recorded from it — `docs/demo-video/show-dont-tell-demo.webm` (57s, 720p, captioned,
+> no voiceover needed). This script remains the reference if you want to re-record with
+> live narration: same beats, same timings.
 
 ---
 
