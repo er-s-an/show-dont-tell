@@ -15,6 +15,8 @@
     "test": "npm run build -w @sdt/server && npm test -w @sdt/server",
     "smoke": "node scripts/smoke.mjs",
     "e2e": "node scripts/e2e.mjs",
+    "verify": "node scripts/verify.mjs",
+    "record:demo": "node scripts/record-demo.mjs",
     "clean": "rm -rf packages/server/dist packages/cards/dist packages/simulator/dist"
   },
   "devDependencies": {

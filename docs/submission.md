@@ -3,8 +3,10 @@
 > **Read this before pasting.** Everything below is true as of **2026-09-11**:
 >
 > 1. **The simulator is implemented and verified** — `packages/simulator/` drives the
->    real server, e2e golden path 16/16 (`node scripts/e2e.mjs`, asserting real MCP
->    wire traffic and the server-side store, not just DOM), demo video recorded from it.
+>    real server, wire-level e2e 27/27 (`node scripts/e2e.mjs` — hermetic: spawns its own
+>    server against a temp store, asserts real MCP wire traffic, matches the on-card
+>    confirmation code to that store, and proves every fail-closed path), demo video
+>    recorded from the same build.
 > 2. **Public repo with MIT license:** https://github.com/er-s-an/show-dont-tell
 > 3. **Open Source mini-challenge PR exists:** modelcontextprotocol/ext-apps#775
 >    (https://github.com/modelcontextprotocol/ext-apps/pull/775) — tick the box.
@@ -12,9 +14,11 @@
 >    statelessly over Streamable HTTP. The 2026-07-28 migration via `createMcpHandler`
 >    is scoped in *What's next*; the SDK-era gotcha is friction-log §3.
 >
-> Verified at submission time: unit tests 30/30, protocol smoke 11/11, e2e 16/16,
+> Verified at submission time: unit tests 30/30, protocol smoke 11/11, wire-level e2e
+> 27/27 (including wrong / reused / expired token refusals and `?preview` gating),
 > cross-process restart recall 7/7 (`node scripts/restart-recall.mjs`), fresh-clone
-> judge path (install → build → test → start → smoke) all green.
+> judge path (install → build → `npx playwright install chromium` → `npm run verify`)
+> all green on Node 20, 22 and 25. One command runs all four stages: `npm run verify`.
 
 ---
 
@@ -65,7 +69,7 @@ One conversation, one weekend in Napa, four moments:
 3. **Book, with a receipt you have to approve.** Tapping *Book* calls `book-hotel`,
    which returns a quote with `status: "requires_confirmation"` and a single-use token
    that expires in 10 minutes. The card opens a confirm sheet — hotel, one night, taxes
-   and fees, total — and states plainly: *"Nothing is charged until you confirm."*
+   and fees, total — and states plainly: *"Nothing is booked until you confirm."*
    `confirm-booking` is the only tool that marks a booking confirmed, it requires that
    token, and a wrong or expired token is refused. **No single agent turn can both
    quote and confirm.** This is a *simulated booking commitment* — no hotel API or
@@ -131,15 +135,20 @@ An npm-workspaces monorepo, no proprietary dependency anywhere in the critical p
   card is on screen.
 - **Simulator** (`packages/simulator`) — the Alexa+-style web experience: type a request,
   watch the real server answer, see the real card render, tap through to a real
-  confirmation. Verified end-to-end by `scripts/e2e.mjs` (golden path 16/16).
-- **Verification** (`scripts/smoke.mjs` + `scripts/e2e.mjs` + `scripts/restart-recall.mjs`)
+  confirmation. Verified end-to-end by `scripts/e2e.mjs` (27/27, wire-level).
+- **Verification** (`scripts/verify.mjs` — one command, four stages: unit tests +
+  `scripts/smoke.mjs` + `scripts/restart-recall.mjs` + `scripts/e2e.mjs`)
   — an 11-check protocol harness with no credentials and no test framework: `tools/list`
   shape, the `ui://` declaration, plan, constraint-driven adjustment,
   quote-without-confirm, wrong-token refusal, confirmation, cross-session recall,
-  `list-trips`, and the served card HTML. The e2e goes further than DOM: it watches the
-  real MCP JSON-RPC traffic, matches the on-card confirmation code against the server's
-  on-disk store, fails on any browser error, and exits non-zero when the backend is
-  unreachable. The restart script proves memory across a full server-process restart.
+  `list-trips`, and the served card HTML. The e2e goes further than DOM: it spawns its
+  own server against a temp data dir (the repo store is hash-checked untouched),
+  watches the real MCP JSON-RPC traffic, matches the on-card confirmation code against
+  that store, proves the fail-closed negatives (confirm-before-quote, book-before-plan,
+  wrong / reused / expired token), checks that only exactly `?preview=1` enables the
+  standalone demo fallback, fails on any browser error, and writes an exact-SHA evidence
+  artifact to `artifacts/e2e-evidence.json`. The restart script proves memory across a
+  full server-process restart.
 
 ### Challenges we ran into
 
@@ -165,12 +174,12 @@ An npm-workspaces monorepo, no proprietary dependency anywhere in the critical p
   with a one-line fix proposed upstream.
 - **Designing a card that respects a purchase.** A booking flow is where a card earns its
   keep, and also where it can do real harm. We made the confirm sheet a separate state
-  with an explicit total line, a 10-minute expiry, and the sentence *"Nothing is charged
+  with an explicit total line, a 10-minute expiry, and the sentence *"Nothing is booked
   until you confirm"* in the card itself — then wrote a smoke check that a mismatched
   token is refused, so the safety property is tested rather than asserted. And the card
   fails closed: if a tool call errors, the card shows the failure and books nothing —
-  the only local simulation left is behind an explicit `?preview=1` flag for design
-  review.
+  the only local simulation left is behind exactly `?preview=1` for design review, and
+  the e2e proves `?preview=0` doesn't trip it.
 
 ### Accomplishments we're proud of
 
@@ -239,6 +248,13 @@ node scripts/smoke.mjs           # 11/11 checks: plan → adjust → quote → c
 node scripts/restart-recall.mjs  # 7/7: booking survives a full server restart
 ```
 
+The full gate, hermetic and browser-level (one-time browser download first):
+
+```bash
+npx playwright install chromium  # one-time, for the wire-level e2e
+npm run verify                   # unit 30 → smoke 11 → restart 7 → e2e 27, all green
+```
+
 Then call `plan-weekend-trip` from any MCP client and read the returned
 `ui://trip/itinerary.html` resource.
 
@@ -263,7 +279,7 @@ Then call `plan-weekend-trip` from any MCP client and read the returned
 
 **Runtime & tooling**
 
-- Node.js 22, engines ≥ 20 — npm workspaces monorepo, TypeScript 5.9
+- Node.js, engines ≥ 20 (verified on 20, 22 and 25) — npm workspaces monorepo, TypeScript 5.9
 - Vite 6 + `vite-plugin-singlefile` (single-file card build)
 - Zod 4 (tool input schemas), Express 5, cors
 - ntfy.sh (optional phone push on confirmed booking)
@@ -294,7 +310,8 @@ Then call `plan-weekend-trip` from any MCP client and read the returned
 - Working Agent Skill delivered: `skill/show-dont-tell/SKILL.md` (name matches its
   parent directory, per the standard).
 - Repo contains the simulator source: `packages/simulator/` — implemented and verified
-  (e2e 16/16); the demo video is recorded from it.
+  (wire-level e2e 27/27); the demo video is auto-recorded from the same production
+  build by `scripts/record-demo.mjs`.
 
 ### Mini challenge: **Open Source** ✅ tick it
 

@@ -63,7 +63,7 @@ demand) matched how we wanted to distribute orchestration logic.
 
 **Errors are legible.** The failure messages told us where to look within minutes, and the
 smoke harness — eleven checks over plain HTTP, seven of them tool calls — was enough to
-verify the whole purchase and recall path without any mock framework.
+verify the whole booking and recall path without any mock framework.
 
 ## 3. What should be improved
 
@@ -261,7 +261,7 @@ serve through the SDK's `createMcpHandler` entry from day one (§3.4) so that th
 revision we chose is the one we actually speak, and we would verify the served version
 with a request rather than with a changelog. We are also planning to move our confirmation
 step onto MRTR (`resultType: "input_required"`) once we are on the 2026-07-28 revision,
-which is the spec-native version of the two-phase purchase we ship today.
+which is the spec-native version of the two-phase booking commitment we ship today.
 
 **On Alexa+ specifically: yes, and that is the point of this feedback.** The concept is
 the most interesting voice surface we have seen, because it is the first one with a

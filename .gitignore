@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .data/
+artifacts/
 *.log
 .DS_Store
 docs/demo-video/*.webm

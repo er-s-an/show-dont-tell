@@ -23,6 +23,18 @@ export async function connectMcp(url: string): Promise<McpConnection> {
   const client = new Client(IMPLEMENTATION);
   await client.connect(new StreamableHTTPClientTransport(new URL(url)));
 
+  // Wire-log hook: every tools/call — whether sent by the simulator's chat
+  // controller (client.callTool) or by a card through the AppBridge (which
+  // calls client.request directly) — is announced on the window so the
+  // demo/verification overlay can show the real MCP traffic.
+  const rawRequest = client.request.bind(client);
+  client.request = ((req: { method?: string; params?: { name?: string } }, ...rest: unknown[]) => {
+    if (req?.method === "tools/call") {
+      window.dispatchEvent(new CustomEvent("sdt:mcp-call", { detail: req?.params?.name ?? "?" }));
+    }
+    return rawRequest(req as never, ...(rest as []));
+  }) as typeof client.request;
+
   const toolsList = await client.listTools();
   const tools = new Map(toolsList.tools.map((t) => [t.name, t]));
   const resourcesList = await client.listResources();

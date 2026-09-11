@@ -28,10 +28,10 @@ orchestration.
 | Claim | Status | Proof / notes |
 |---|---|---|
 | MCP server, spec 2025-11-25 over Streamable HTTP, session-less | **Implemented** | `node scripts/smoke.mjs` — 11/11 |
-| Six tools + `ui://trip/itinerary.html` MCP Apps resource | **Implemented** | smoke + `node scripts/e2e.mjs` — 16/16 |
+| Six tools + `ui://trip/itinerary.html` MCP Apps resource | **Implemented** | smoke + `node scripts/e2e.mjs` — 27/27 |
 | Trip engine (curated 22-venue Napa dataset, constraint scoring) | **Implemented demo data** | unit tests 30/30; dataset is hand-written, not live inventory |
 | Two-phase booking: quote → confirm, single-use expiring token | **Implemented — simulated booking** | No hotel/payment provider is called; `confirm-booking` changes local state and issues a confirmation code. It is a *simulated booking commitment with an enforced confirmation token*, and the refusal path is tested |
-| Fail-closed card | **Implemented** | A failed MCP call surfaces an error in the card — never a fake success (local simulation exists only behind `?preview=1`) |
+| Fail-closed card | **Implemented** | A failed MCP call surfaces an error in the card — never a fake success (local simulation exists only behind exactly `?preview=1`; `?preview=0` & co. fail closed, proven by the e2e) |
 | Cross-session trip memory | **Implemented capability** | File-backed store keyed by `conversationId`; proven across a server-process restart by `node scripts/restart-recall.mjs` |
 | Phone push on confirm (ntfy.sh) | **Optional, implemented** | Fires only with `NTFY_TOPIC` set; verified live. A paired watch buzzes only if the phone routes the notification |
 | Alexa+ voice surface | **Simulated** | `packages/simulator` — typed text stands in for speech; Alexa+ cannot render MCP Apps today |
@@ -52,7 +52,7 @@ orchestration.
 
 ## Quickstart
 
-Requires Node.js ≥ 20.
+Requires Node.js ≥ 20 (verified on 20 / 22 / 25).
 
 ```bash
 npm install
@@ -70,6 +70,39 @@ npm run dev -w @sdt/simulator   # → http://localhost:5173
 Optional: set `NTFY_TOPIC` to get a real phone push (ntfy.sh) when a booking
 confirms — and if your phone relays notifications to a paired watch, that's
 the demo's "watch buzzes" moment.
+
+## Verify it
+
+Every layer is hermetic: the harnesses spawn their own servers against
+throwaway data dirs and never touch the repo-local `.data/`.
+
+```bash
+npm ci
+npm run build
+npx playwright install chromium   # one-time: browser for the wire-level e2e
+npm run verify                    # unit → smoke → restart recall → browser e2e
+```
+
+`npm run verify` runs, in order:
+
+| Stage | What it proves | Count |
+|---|---|---|
+| `npm test -w @sdt/server` | engine + store unit tests | 30 |
+| `scripts/smoke.mjs` | full golden path over real JSON-RPC, wrong-token refusal, ui resource | 11 |
+| `scripts/restart-recall.mjs` | a booking survives a server-process kill + restart (same store) | 7 |
+| `scripts/e2e.mjs` | wire-level browser run of the production build: real MCP traffic observed, card confirmation code checked against the server's temp-dir store, zero pageerrors | 27 |
+
+The e2e additionally proves the fail-closed contract — confirm-before-quote,
+book-before-plan, wrong / reused / expired tokens are all refused — and that
+the standalone card only fakes success behind exactly `?preview=1`
+(`?preview=0`, `?preview=true`, and no param all fail closed). Each run writes
+`artifacts/e2e-evidence.json` (git HEAD, Node/npm, lockfile hash, Chromium
+version, store hash, observed MCP methods, every check).
+
+The simulator can be pointed at any server with a query param, which is how
+the production build is tested: `http://localhost:5173/?mcp=http://host:port/mcp`.
+`SDT_QUOTE_TTL_MS` overrides the quote lifetime so the expiry refusal is
+testable without a 10-minute wait.
 
 ## How it works
 

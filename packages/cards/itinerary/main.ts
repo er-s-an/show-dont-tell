@@ -95,9 +95,10 @@ const sheetXBtn = $("#sheet-x") as HTMLButtonElement;
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Standalone design preview only (`?preview=1`): booking interactions are
-// simulated locally. Embedded in a host, every failure fails closed instead.
-const PREVIEW = new URLSearchParams(location.search).has("preview");
+// Standalone design preview only (exactly `?preview=1`): booking interactions
+// are simulated locally. Any other value — `?preview=0`, `?preview=true`,
+// a bare `?preview` — fails closed like the embedded host path.
+const PREVIEW = new URLSearchParams(location.search).get("preview") === "1";
 
 let errorTimer = 0;
 function showError(msg: string) {
@@ -214,7 +215,7 @@ function openSheet(b: BookingInfo) {
     <div class="sheet-row"><span>${ICONS.calendar} 1 night</span><span>$${esc(b.pricePerNight)}</span></div>
     <div class="sheet-row"><span>${ICONS.receipt} Taxes &amp; fees</span><span>$${esc(b.taxes)}</span></div>
     <div class="sheet-row total-row"><span>Total</span><span class="num">$${esc(b.total)}</span></div>`;
-  sheetNoteEl.innerHTML = `${ICONS.shield}<span>Nothing is charged until you confirm. Quote held for 10 minutes.</span>`;
+  sheetNoteEl.innerHTML = `${ICONS.shield}<span>Nothing is booked until you confirm. Quote held for 10 minutes.</span>`;
   sheetEl.hidden = false;
   sheetEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
 }

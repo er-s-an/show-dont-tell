@@ -15,7 +15,13 @@ const statusText = $("#status-text");
 const dayChip = $("#day-chip");
 const newDayBtn = $("#new-day") as HTMLButtonElement;
 
-const MCP_URL = "http://localhost:3001/mcp";
+// MCP endpoint resolution: `?mcp=` query param (verification harnesses point
+// the production build at their own server), then the VITE_MCP_URL build-time
+// env, then the local default.
+const MCP_URL =
+  new URLSearchParams(location.search).get("mcp") ??
+  import.meta.env.VITE_MCP_URL ??
+  "http://localhost:3001/mcp";
 
 /* ---------------- session state (survives reloads; "memory" demo) ---------------- */
 
@@ -200,7 +206,7 @@ async function boot() {
   } catch (e) {
     console.error(e);
     statusText.textContent =
-      "Can't reach the MCP server at localhost:3001. Start it with `npm start` in the repo root, then retry.";
+      `Can't reach the MCP server at ${MCP_URL}. Start it with \`npm start\` in the repo root, then retry.`;
   }
 }
 
@@ -223,6 +229,23 @@ function newDay() {
   persist();
   const turn = addTurn();
   turn.done("Morning. New day — same memory. Ask me what we booked, if you like.");
+}
+
+/* ---------------- wire overlay + truth tag (demo / verification) ---------------- */
+
+const uiFlags = new URLSearchParams(location.search);
+if (uiFlags.has("demo") || uiFlags.has("wire")) {
+  $("#wire").hidden = false;
+  $("#truth-tag").hidden = false;
+  const logEl = $("#wire-log");
+  window.addEventListener("sdt:mcp-call", (e) => {
+    const name = (e as CustomEvent).detail ?? "?";
+    const line = document.createElement("div");
+    line.className = "wire-line";
+    line.textContent = `→ tools/call ${name}`;
+    logEl.appendChild(line);
+    while (logEl.children.length > 7) logEl.firstElementChild?.remove();
+  });
 }
 
 /* ---------------- demo-mode API (used by demo.ts and e2e) ---------------- */

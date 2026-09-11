@@ -26,6 +26,10 @@ const store = new TripStore();
 
 const rid = (p: string) => `${p}_${Math.random().toString(36).slice(2, 10)}`;
 
+// Quote lifetime. SDT_QUOTE_TTL_MS exists so the expiry refusal path can be
+// exercised in verification without a 10-minute wait; production uses 10 min.
+const QUOTE_TTL_MS = Number(process.env.SDT_QUOTE_TTL_MS ?? 10 * 60 * 1000);
+
 function tripCard(trip: TripState) {
   return {
     tripId: trip.tripId,
@@ -234,7 +238,7 @@ export function createServer(): McpServer {
       title: "Book a hotel (step 1: quote)",
       description:
         "Starts a booking for one of the trip's hotel options. Returns a price " +
-        "breakdown with status 'requires_confirmation'. NEVER charges without " +
+        "breakdown with status 'requires_confirmation'. NEVER books without " +
         "the user confirming via confirm-booking.",
       inputSchema: z.object({
         tripId: z.string(),
@@ -256,7 +260,7 @@ export function createServer(): McpServer {
         taxes,
         total: hotel.price + taxes,
         token: rid("bk"),
-        expiresAt: Date.now() + 10 * 60 * 1000,
+        expiresAt: Date.now() + QUOTE_TTL_MS,
         createdAt: new Date().toISOString(),
       };
       trip.booking = booking;
@@ -278,7 +282,7 @@ export function createServer(): McpServer {
     server,
     "confirm-booking",
     {
-      title: "Confirm booking (step 2: charge)",
+      title: "Confirm booking (step 2: commit)",
       description:
         "Completes a pending booking after explicit user confirmation. " +
         "Requires the bookingToken from book-hotel.",

@@ -314,6 +314,54 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 .captions strong { color: #7cd4f7; }
 
+/* ============ wire overlay + truth tag (demo / verification) ============ */
+
+.wire {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 40;
+  width: 250px;
+  padding: 10px 12px 8px;
+  border-radius: 12px;
+  background: rgba(28, 26, 22, 0.78);
+  backdrop-filter: blur(8px);
+  color: #d8f3dc;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11.5px;
+  box-shadow: 0 10px 32px rgba(28, 26, 22, 0.3);
+}
+.wire-title {
+  color: #fff8ec;
+  opacity: 0.75;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.wire-line {
+  padding: 2px 0;
+  animation: caption-in 0.3s var(--ease-out);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.truth-tag {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 40;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(28, 26, 22, 0.72);
+  backdrop-filter: blur(8px);
+  color: #fff8ec;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 32px rgba(28, 26, 22, 0.28);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

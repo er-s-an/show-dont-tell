@@ -11,10 +11,12 @@ npm start &                 # MCP server → http://localhost:3001/mcp
 node scripts/smoke.mjs      # 11/11 checks, no credentials required
 ```
 
-Last verified: **2026-09-11** — unit tests **30/30** (`npm test`), smoke **11/11**
-(`scripts/smoke.mjs`), e2e **16/16** (`scripts/e2e.mjs`, asserting real MCP wire
-traffic and the on-disk store, failing on any pageerror), restart-recall **7/7**
-(`scripts/restart-recall.mjs`).
+Last verified: **2026-09-12** — unit tests **30/30** (`npm test`), smoke **11/11**
+(`scripts/smoke.mjs`), wire-level e2e **27/27** (`scripts/e2e.mjs` — hermetic temp
+data dir, real MCP wire traffic, on-card confirmation code matched against that
+store, fail-closed negatives, `?preview` gating, zero pageerrors; evidence at
+`artifacts/e2e-evidence.json`), restart-recall **7/7**
+(`scripts/restart-recall.mjs`). One command: `npm run verify`.
 
 ---
 
@@ -51,7 +53,7 @@ Stage 1 asks two binary questions. Both are answered by code, not prose.
 |---|---|---|
 | A real design system, not inline styles | `packages/cards/shared/design-system.css` — warm editorial tokens (paper surfaces, Playfair Display + Inter, Alexa-blue accents), shared by all views | Read the token block at the top of the file |
 | Interface, not a screenshot: the card is interactive | Hotel selection, `Book` button, confirm sheet, dog-friendly adjustment, all wired to real tool calls (`packages/cards/itinerary/main.ts:160-168,228-293`) | Run the card in an MCP Apps host and click through; `docs/card-in-host.png` shows a render |
-| Purchase presented as a trust surface | Confirm sheet with itemised rows and total plus the literal line *"Nothing is charged until you confirm. Quote held for 10 minutes."* (`main.ts:182-189`) | Grep the built card: `grep -o "Nothing is charged[^<]*" packages/cards/dist/itinerary/index.html` |
+| Purchase presented as a trust surface | Confirm sheet with itemised rows and total plus the literal line *"Nothing is booked until you confirm. Quote held for 10 minutes."* (`main.ts` `openSheet`) | Grep the built card: `grep -o "Nothing is booked[^<]*" packages/cards/dist/itinerary/index.html` |
 | Motion with intent, and motion that yields | Total counts up on arrival (`main.ts:101-111`); card **adopts the host's theme and style variables** (`main.ts:218-222`); full `prefers-reduced-motion` support both in the card logic (`main.ts:91`) and globally in CSS (`design-system.css:472`) | Search the CSS for the media query; the count-up is skipped when reduced motion is set |
 | Restraint in the voice layer | `SKILL.md` §Voice notes: spoken replies under 25 words when a card is on screen; name the numbers that matter | `skill/show-dont-tell/SKILL.md:44-47` |
 
@@ -96,7 +98,9 @@ also load-bearing: one of its entries produced a real architectural constraint.
   https://github.com/er-s-an/show-dont-tell
 - [x] Runtime hook is genuinely exercised — ✅ verified 11/11 via `scripts/smoke.mjs`
 - [ ] Demo video is **under 3 minutes**, public, and shows the experience running —
-  recorded (`docs/demo-video/show-dont-tell-demo.webm`, 66s, 720p, captioned);
+  recorded from the current production build by `scripts/record-demo.mjs`
+  (`docs/demo-video/show-dont-tell-demo.webm`, 71s, 720p, captioned; shows the wire
+  calls, the fail-closed kill-and-restart act, and the recall);
   **YouTube/Vimeo upload is the remaining human step**
 - [ ] Product feedback submitted — it is mandatory (*`docs/product-feedback.md`* is
   ready to paste)
@@ -105,7 +109,7 @@ also load-bearing: one of its entries produced a real architectural constraint.
 **Scoring items (should be true):**
 
 - [x] `packages/simulator/` implemented and able to drive the real server — verified
-  end-to-end by `scripts/e2e.mjs` (16/16)
+  end-to-end by `scripts/e2e.mjs` (27/27, wire-level, hermetic)
 - [x] `README.md` quickstart matches reality — `npm run dev -w @sdt/simulator` works;
   the truth table in the README labels Implemented / Simulated / Planned per claim
 - [x] **Protocol-revision claim matches the running server.** The server answers
@@ -124,8 +128,12 @@ also load-bearing: one of its entries produced a real architectural constraint.
 - [x] AWS Builder mini challenge — **left unticked**: no Bedrock / AgentCore / Strands /
   SageMaker / Kiro Crew usage
 - [x] Fail-closed card — a failed tool call surfaces an error toast and books nothing;
-  local simulation exists only behind `?preview=1`; e2e exits non-zero with the backend
-  down
+  local simulation exists only behind exactly `?preview=1` (`?preview=0` and friends
+  fail closed, proven by the e2e); the e2e's negative backend-down run exits non-zero
+- [x] Portable cold start — fresh clone → `npm ci` → `npm run build` →
+  `npx playwright install chromium` → `npm run verify` is green on Node 20/22/25;
+  the e2e runs hermetically against a temp `SDT_DATA_DIR` and hash-checks that the
+  repo `.data` is untouched
 - [x] Card hygiene — all server-interpolated fields escaped before `innerHTML`; the
   `ui://` resource declares `_meta.ui.csp` for the two Google Fonts domains; fonts
   degrade to local serif/sans stacks under a strict host
