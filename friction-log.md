@@ -28,3 +28,12 @@
 - **严重度**:Medium(不影响合标——比赛最低要求是 2025-11-25;但"用新版"需要重写 server 入口)
 - **Workaround**:保守选择按 2025-11-25 提供服务(满足比赛要求);`createMcpHandler` 迁移留作 next step
 - **建议**:在 SDK 的 migration guide 首页显著位置说明纪元分裂机制;"supports 2026-07-28" 的公告应注明"仅新入口"
+
+## #4 `node --test` 的 glob 行为跨大版本不一致,`engines >=20` 无法直接达成(2026-09-12)
+
+- **任务**:按 `engines: >=20` 声明,在 Node 20 / 22 / 25 矩阵上跑同一套测试命令
+- **预期**:`node --test "dist/test/*.test.js"`(Node 侧展开 glob)或 `node --test dist/test/`(目录形式)在声明范围内表现一致
+- **实际**:Node 20(v20.20.2)的 test runner 不展开任何 glob,报 `Could not find '…/dist/test/*.test.js'`;Node 22.0 把目录参数当作单个测试文件解析(`dist/test:1:1` 解析失败)。三种写法在两个大版本上各死一种
+- **严重度**:Low(仅测试入口;但对"fresh clone 一条命令验证"的评委路径是直接阻塞)
+- **Workaround**:用 shell 展开的不加引号 glob——`node --test dist/test/*.test.js`,20/22/25 全部通过
+- **建议**:Node 文档的 --test 章节应给出跨版本矩阵支持表;在没有之前,`engines >=20` 的项目别依赖 runner 侧 glob

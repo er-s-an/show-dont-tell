@@ -120,8 +120,9 @@ also load-bearing: one of its entries produced a real architectural constraint.
   claim here and in `docs/submission.md` / `docs/demo-script.md`. **Never claim a
   revision without a request that proves it** — a judge can check it with one `curl`
 - [x] `npm test` runs — 30 unit tests across engine and store, 30/30
-- [x] Friction log entries dated and current — `friction-log.md` holds three entries,
-  including the protocol-era finding (`docs/product-feedback.md` §3.4)
+- [x] Friction log entries dated and current — `friction-log.md` holds four entries,
+  including the protocol-era finding (`docs/product-feedback.md` §3.4) and the
+  Node `--test` cross-version glob finding from the 20/22/25 cold-start matrix
 - [x] Open Source mini challenge PR opened against `modelcontextprotocol/ext-apps`
   (the `_meta` guard) — **ext-apps#775**, currently OPEN (review not yet answered as of
   2026-09-11); rules state a merged PR is not required
