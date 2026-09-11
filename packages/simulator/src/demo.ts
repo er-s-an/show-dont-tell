@@ -24,7 +24,7 @@ const SCRIPT: Step[] = [
   { type: "Make it dog-friendly", caption: "Adjust in place. Same card, new constraints.", settle: 4200 },
   { caption: "Balloon ride is out — it's not dog-friendly. The plan re-solves itself.", settle: 3600 },
   { click: "#book-btn", caption: "Booking is a quote first. <strong>Nothing charges without your confirm.</strong>", settle: 3400 },
-  { click: "#sheet-confirm", caption: "Confirmed — and a push lands on your phone. (And your watch.)", settle: 4200 },
+  { click: "#sheet-confirm", caption: "Confirmed — the server just fired a real push (ntfy.sh). Pair a phone, and your watch buzzes.", settle: 4200 },
   { scroll: "#confirmation", settle: 2400 },
   { newDay: true, caption: "Next morning.", settle: 3000 },
   { type: "What was that hotel we booked?", caption: "New day. <strong>Same memory.</strong> Cross-session by design.", settle: 4200 },

@@ -3,7 +3,8 @@
 > **Read this before pasting.** Everything below is true as of **2026-09-11**:
 >
 > 1. **The simulator is implemented and verified** — `packages/simulator/` drives the
->    real server, e2e golden path 6/6 (`node scripts/e2e.mjs`), demo video recorded from it.
+>    real server, e2e golden path 16/16 (`node scripts/e2e.mjs`, asserting real MCP
+>    wire traffic and the server-side store, not just DOM), demo video recorded from it.
 > 2. **Public repo with MIT license:** https://github.com/er-s-an/show-dont-tell
 > 3. **Open Source mini-challenge PR exists:** modelcontextprotocol/ext-apps#775
 >    (https://github.com/modelcontextprotocol/ext-apps/pull/775) — tick the box.
@@ -11,8 +12,9 @@
 >    statelessly over Streamable HTTP. The 2026-07-28 migration via `createMcpHandler`
 >    is scoped in *What's next*; the SDK-era gotcha is friction-log §3.
 >
-> Verified at submission time: unit tests 30/30, protocol smoke 11/11, e2e 6/6,
-> fresh-clone judge path (install → build → test → start → smoke) all green.
+> Verified at submission time: unit tests 30/30, protocol smoke 11/11, e2e 16/16,
+> cross-process restart recall 7/7 (`node scripts/restart-recall.mjs`), fresh-clone
+> judge path (install → build → test → start → smoke) all green.
 
 ---
 
@@ -64,22 +66,32 @@ One conversation, one weekend in Napa, four moments:
    which returns a quote with `status: "requires_confirmation"` and a single-use token
    that expires in 10 minutes. The card opens a confirm sheet — hotel, one night, taxes
    and fees, total — and states plainly: *"Nothing is charged until you confirm."*
-   `confirm-booking` is the only tool that charges, it requires that token, and a wrong
-   or expired token is refused. **No single agent turn can both quote and charge.**
+   `confirm-booking` is the only tool that marks a booking confirmed, it requires that
+   token, and a wrong or expired token is refused. **No single agent turn can both
+   quote and confirm.** This is a *simulated booking commitment* — no hotel API or
+   payment provider is called — with the safety property enforced and tested exactly
+   as if it were a real purchase.
 4. **Come back later.** State lives in the server, keyed by trip id and indexed by
    conversation id, so a new session days later can answer "what was that hotel we
    booked?" — `list-trips` → `get-trip` → the card returns with its booking intact.
+   The memory survives a full server-process restart, proven by
+   `node scripts/restart-recall.mjs` (7/7): plan and confirm against one process,
+   kill it, recall from a fresh one.
 
 When the booking confirms, the server fires an **ntfy.sh push** to the user's phone with
-the hotel, total and confirmation code — the notification that makes a paired watch buzz
-on camera. The push is optional (`NTFY_TOPIC`) and a no-op without it.
+the hotel, total and confirmation code. The push is optional (`NTFY_TOPIC`) and a no-op
+without it; a paired watch buzzes only if the phone relays the notification. It was
+fired for real during the demo recording — the devices themselves are not on camera.
 
-**What is real and what is staged.** The server, the tools, the cards, the purchase flow,
-the memory and the push are real code (see *Judges' quickstart* at the bottom). The
-Alexa+ voice surface is a simulator: it takes typed text standing in for speech and
-renders the real card returned by the real server. **Alexa+ cannot render MCP Apps
-today, and we do not claim it can** — we are showing the next step, built only on the
-standards the track points to.
+**What is real and what is staged.** The server, the tools, the cards, the two-phase
+confirmation flow, the memory and the push are real code (see *Judges' quickstart* at
+the bottom); the booking itself is a simulated commitment — no real hotel is reserved
+and no money moves. The Alexa+ voice surface is a simulator: it takes typed text
+standing in for speech and renders the real card returned by the real server. **Alexa+
+cannot render MCP Apps today, and we do not claim it can** — we are showing the next
+step, built only on the standards the track points to. One more honesty note: the
+simulator's planner is a deterministic phrase router standing in for the model an MCP
+host would supply — the server doesn't care which side the model is on.
 
 ### How we built it
 
@@ -119,11 +131,15 @@ An npm-workspaces monorepo, no proprietary dependency anywhere in the critical p
   card is on screen.
 - **Simulator** (`packages/simulator`) — the Alexa+-style web experience: type a request,
   watch the real server answer, see the real card render, tap through to a real
-  confirmation. Verified end-to-end by `scripts/e2e.mjs` (golden path 6/6).
-- **Verification** (`scripts/smoke.mjs`) — an 11-check end-to-end harness with no
-  credentials and no test framework: `tools/list` shape, the `ui://` declaration, plan,
-  constraint-driven adjustment, quote-without-charge, wrong-token refusal, confirmation,
-  cross-session recall, `list-trips`, and the served card HTML.
+  confirmation. Verified end-to-end by `scripts/e2e.mjs` (golden path 16/16).
+- **Verification** (`scripts/smoke.mjs` + `scripts/e2e.mjs` + `scripts/restart-recall.mjs`)
+  — an 11-check protocol harness with no credentials and no test framework: `tools/list`
+  shape, the `ui://` declaration, plan, constraint-driven adjustment,
+  quote-without-confirm, wrong-token refusal, confirmation, cross-session recall,
+  `list-trips`, and the served card HTML. The e2e goes further than DOM: it watches the
+  real MCP JSON-RPC traffic, matches the on-card confirmation code against the server's
+  on-disk store, fails on any browser error, and exits non-zero when the backend is
+  unreachable. The restart script proves memory across a full server-process restart.
 
 ### Challenges we ran into
 
@@ -151,18 +167,22 @@ An npm-workspaces monorepo, no proprietary dependency anywhere in the critical p
   keep, and also where it can do real harm. We made the confirm sheet a separate state
   with an explicit total line, a 10-minute expiry, and the sentence *"Nothing is charged
   until you confirm"* in the card itself — then wrote a smoke check that a mismatched
-  token is refused, so the safety property is tested rather than asserted.
+  token is refused, so the safety property is tested rather than asserted. And the card
+  fails closed: if a tool call errors, the card shows the failure and books nothing —
+  the only local simulation left is behind an explicit `?preview=1` flag for design
+  review.
 
 ### Accomplishments we're proud of
 
 - A **real, self-hosted MCP server on the spec the track requires** (2025-11-25, the SDK's
   current latest) — session-less Streamable HTTP, six tools, one `ui://` card resource —
   that passes an 11/11 end-to-end smoke test with no credentials and no paid API.
-- **A purchase flow that cannot charge by accident.** Quote and charge are different
-  tools, the token is single-use and expiring, and the refusal path is covered by the
-  test harness.
+- **A confirmation flow that cannot confirm by accident.** Quote and confirm are
+  different tools, the token is single-use and expiring, and the refusal path is covered
+  by the test harness — the same shape a real purchase integration would take.
 - **Cross-session memory that actually persists** across processes and days, because it
-  lives in a store rather than in a session.
+  lives in a store rather than in a session — proven by a kill-and-restart harness
+  (`restart-recall.mjs`, 7/7), not just asserted.
 - **A plan that is computed, not scripted.** Ask for dog-friendly and the balloon and the
   spa genuinely disappear from Sunday.
 - **A card designed as an interface, not a screenshot**: host theming, hand-drawn scenes,
@@ -214,8 +234,9 @@ An npm-workspaces monorepo, no proprietary dependency anywhere in the critical p
 ```bash
 npm install
 npm run build
-npm start                 # MCP server → http://localhost:3001/mcp
-node scripts/smoke.mjs    # 11/11 checks: plan → adjust → quote → confirm → recall
+npm start                        # MCP server → http://localhost:3001/mcp
+node scripts/smoke.mjs           # 11/11 checks: plan → adjust → quote → confirm → recall
+node scripts/restart-recall.mjs  # 7/7: booking survives a full server restart
 ```
 
 Then call `plan-weekend-trip` from any MCP client and read the returned
@@ -273,7 +294,7 @@ Then call `plan-weekend-trip` from any MCP client and read the returned
 - Working Agent Skill delivered: `skill/show-dont-tell/SKILL.md` (name matches its
   parent directory, per the standard).
 - Repo contains the simulator source: `packages/simulator/` — implemented and verified
-  (e2e 6/6); the demo video is recorded from it.
+  (e2e 16/16); the demo video is recorded from it.
 
 ### Mini challenge: **Open Source** ✅ tick it
 

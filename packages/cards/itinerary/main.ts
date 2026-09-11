@@ -69,6 +69,11 @@ const SCENE_BY_INDEX = ["vineyard", "downtown", "river"];
 /* ================= element refs ================= */
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
+// Everything interpolated into innerHTML below passes through esc(): trip and
+// booking fields arrive over the wire and must not be able to inject markup.
+const esc = (s: unknown) =>
+  String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const heroWhereEl = $("#hero-where");
 const titleEl = $("#trip-title");
 const subtitleEl = $("#trip-subtitle");
@@ -89,6 +94,19 @@ const sheetCancelBtn = $("#sheet-cancel") as HTMLButtonElement;
 const sheetXBtn = $("#sheet-x") as HTMLButtonElement;
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Standalone design preview only (`?preview=1`): booking interactions are
+// simulated locally. Embedded in a host, every failure fails closed instead.
+const PREVIEW = new URLSearchParams(location.search).has("preview");
+
+let errorTimer = 0;
+function showError(msg: string) {
+  const el = $("#card-error");
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(errorTimer);
+  errorTimer = window.setTimeout(() => { el.hidden = true; }, 5000);
+}
 
 $("#hero").insertAdjacentHTML("afterbegin", HERO_SCENE);
 
@@ -119,7 +137,7 @@ function render(trip: TripCard) {
   const dog = /dog-friendly/i.test(trip.subtitle);
   const subtitleText = trip.subtitle.replace(/\s*·\s*dog-friendly/i, "");
   subtitleEl.innerHTML =
-    `${ICONS.calendar}<span>${subtitleText}</span>` +
+    `${ICONS.calendar}<span>${esc(subtitleText)}</span>` +
     (dog ? `<span class="pref-badge">${ICONS.paw}dog-friendly</span>` : "");
   if (dog) {
     dogBtn.disabled = true;
@@ -128,13 +146,13 @@ function render(trip: TripCard) {
 
   timelineEl.innerHTML = trip.days.map((day) => `
     <div class="day">
-      <h3>${day.label}<small>${day.stops} stops</small></h3>
+      <h3>${esc(day.label)}<small>${esc(day.stops)} stops</small></h3>
       <ol class="tl">
         ${day.items.map((it) => `
           <li class="tl-item">
-            <span class="tl-time">${it.time}</span>
+            <span class="tl-time">${esc(it.time)}</span>
             <span class="tl-icon">${ICONS[it.icon] ?? ICONS.pin}</span>
-            <div class="tl-body"><strong>${it.title}</strong><small>${it.note}</small></div>
+            <div class="tl-body"><strong>${esc(it.title)}</strong><small>${esc(it.note)}</small></div>
           </li>`).join("")}
       </ol>
     </div>`).join("");
@@ -142,15 +160,15 @@ function render(trip: TripCard) {
   hotelCountEl.textContent = `${trip.hotels.length} options`;
   hotelListEl.innerHTML = trip.hotels.map((h, i) => `
     <button class="hotel ${h.tag ? "recommended" : ""} ${selectedHotel === h.name ? "selected" : ""}"
-            data-hotel="${h.name}" style="animation-delay:${i * 70}ms">
-      ${h.tag ? `<span class="tag">${h.tag}</span>` : ""}
+            data-hotel="${esc(h.name)}" style="animation-delay:${i * 70}ms">
+      ${h.tag ? `<span class="tag">${esc(h.tag)}</span>` : ""}
       <span class="scene-strip">${HOTEL_SCENES[SCENE_BY_INDEX[i % 3]]}</span>
       <span class="hotel-body">
-        <strong>${h.name}</strong>
-        <small>${h.note}</small>
+        <strong>${esc(h.name)}</strong>
+        <small>${esc(h.note)}</small>
         <span class="hotel-meta">
-          <span class="rating">${ICONS.star} ${h.rating}</span>
-          <span class="price">$${h.price}<small>/night</small></span>
+          <span class="rating">${ICONS.star} ${esc(h.rating)}</span>
+          <span class="price">$${esc(h.price)}<small>/night</small></span>
         </span>
       </span>
     </button>`).join("");
@@ -161,9 +179,9 @@ function render(trip: TripCard) {
   hotelListEl.querySelectorAll<HTMLButtonElement>(".hotel").forEach((el) => {
     el.addEventListener("click", () => {
       selectedHotel = el.dataset.hotel === selectedHotel ? null : (el.dataset.hotel ?? null);
-      hotelListEl.querySelectorAll(".hotel").forEach((x) => x.classList.toggle("selected", x.dataset.hotel === selectedHotel));
+      hotelListEl.querySelectorAll<HTMLButtonElement>(".hotel").forEach((x) => x.classList.toggle("selected", x.dataset.hotel === selectedHotel));
       bookBtn.innerHTML = selectedHotel
-        ? `Book “${selectedHotel}” ${ICONS.arrow}`
+        ? `Book “${esc(selectedHotel)}” ${ICONS.arrow}`
         : `Book “Our pick” ${ICONS.arrow}`;
     });
   });
@@ -183,7 +201,7 @@ function render(trip: TripCard) {
     sheetEl.hidden = true;
     bookBtn.disabled = false;
     bookBtn.innerHTML = selectedHotel
-      ? `Book “${selectedHotel}” ${ICONS.arrow}`
+      ? `Book “${esc(selectedHotel)}” ${ICONS.arrow}`
       : `Book “Our pick” ${ICONS.arrow}`;
   }
 }
@@ -192,10 +210,10 @@ function render(trip: TripCard) {
 
 function openSheet(b: BookingInfo) {
   sheetRowsEl.innerHTML = `
-    <div class="sheet-row"><span>${ICONS.hotel} Hotel</span><strong>${b.hotelName}</strong></div>
-    <div class="sheet-row"><span>${ICONS.calendar} 1 night</span><span>$${b.pricePerNight}</span></div>
-    <div class="sheet-row"><span>${ICONS.receipt} Taxes &amp; fees</span><span>$${b.taxes}</span></div>
-    <div class="sheet-row total-row"><span>Total</span><span class="num">$${b.total}</span></div>`;
+    <div class="sheet-row"><span>${ICONS.hotel} Hotel</span><strong>${esc(b.hotelName)}</strong></div>
+    <div class="sheet-row"><span>${ICONS.calendar} 1 night</span><span>$${esc(b.pricePerNight)}</span></div>
+    <div class="sheet-row"><span>${ICONS.receipt} Taxes &amp; fees</span><span>$${esc(b.taxes)}</span></div>
+    <div class="sheet-row total-row"><span>Total</span><span class="num">$${esc(b.total)}</span></div>`;
   sheetNoteEl.innerHTML = `${ICONS.shield}<span>Nothing is charged until you confirm. Quote held for 10 minutes.</span>`;
   sheetEl.hidden = false;
   sheetEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
@@ -246,8 +264,15 @@ dogBtn.addEventListener("click", async () => {
       instruction: "make it dog-friendly",
     });
     const trip = extract(result);
-    if (trip) render(trip);
-  } catch (e) { console.error(e); }
+    if (trip) {
+      render(trip);
+    } else {
+      showError("The server didn't change the plan.");
+    }
+  } catch (e) {
+    console.error(e);
+    showError("Couldn't reach the trip server. The plan is unchanged.");
+  }
   finally { setTimeout(() => { dogBtn.disabled = false; }, 600); }
 });
 
@@ -262,20 +287,25 @@ bookBtn.addEventListener("click", async () => {
     if (sc?.booking?.status === "requires_confirmation") {
       pendingToken = sc.bookingToken ?? null;
       openSheet(sc.booking);
+    } else {
+      showError("The server did not return a booking quote. Nothing was booked.");
     }
   } catch (e) {
     console.error(e);
-    // Standalone preview: simulate the quote locally.
-    const taxes = Math.round(hotel.price * 0.15);
-    pendingToken = "demo-token";
-    openSheet({
-      status: "requires_confirmation",
-      hotelName: hotel.name,
-      pricePerNight: hotel.price,
-      taxes,
-      total: hotel.price + taxes,
-      confirmation: null,
-    });
+    if (PREVIEW) {
+      const taxes = Math.round(hotel.price * 0.15);
+      pendingToken = "demo-token";
+      openSheet({
+        status: "requires_confirmation",
+        hotelName: hotel.name,
+        pricePerNight: hotel.price,
+        taxes,
+        total: hotel.price + taxes,
+        confirmation: null,
+      });
+    } else {
+      showError("Couldn't reach the trip server. Nothing was booked.");
+    }
   } finally {
     setTimeout(() => { bookBtn.disabled = false; }, 600);
   }
@@ -290,12 +320,21 @@ sheetConfirmBtn.addEventListener("click", async () => {
       bookingToken: pendingToken,
     });
     const trip = extract(result);
-    if (trip) render(trip);
+    if (trip) {
+      render(trip);
+    } else {
+      showError("The server did not confirm the booking. Nothing was booked.");
+    }
   } catch (e) {
     console.error(e);
-    closeSheet();
-    const hotel = currentTrip.hotels.find((h) => h.name === selectedHotel) ?? currentTrip.hotels[0];
-    showConfirmation(hotel.name, "NP-DEMO42", hotel.price + Math.round(hotel.price * 0.15));
+    if (PREVIEW) {
+      closeSheet();
+      const hotel = currentTrip.hotels.find((h) => h.name === selectedHotel) ?? currentTrip.hotels[0];
+      showConfirmation(hotel.name, "NP-DEMO42", hotel.price + Math.round(hotel.price * 0.15));
+    } else {
+      // Fail closed: keep the sheet open so the confirm can be retried.
+      showError("Confirmation failed — no booking was made. Please try again.");
+    }
   } finally {
     setTimeout(() => { sheetConfirmBtn.disabled = false; }, 600);
   }

@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @sdt/cards && npm run build -w @sdt/server",
+    "build": "npm run build -w @sdt/cards && npm run build -w @sdt/server && npm run build -w @sdt/simulator",
     "start": "node packages/server/dist/index.js",
     "dev:cards": "npm run dev -w @sdt/cards",
     "dev:simulator": "npm run dev -w @sdt/simulator",

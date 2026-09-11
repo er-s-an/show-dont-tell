@@ -10,6 +10,7 @@ import {
 } from "@modelcontextprotocol/server";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { DEFAULT_DATES, DESTINATION } from "./data/napa.js";
 import { buildDays, pickHotels, estimateTotal } from "./engine.js";
@@ -297,8 +298,11 @@ export function createServer(): McpServer {
         return { content: [{ type: "text", text: "That booking quote expired or doesn't match. Please start again." }], isError: true };
       }
       booking.status = "confirmed";
+      // Hash, not raw base64: the code must differ per booking. A plain
+      // base64 of `tripId + token` shares its first 6 chars for every
+      // tripId that starts with "trip", giving every booking the same code.
       booking.confirmation =
-        "NP-" + Buffer.from(tripId + bookingToken).toString("base64url").slice(0, 6).toUpperCase();
+        "NP-" + createHash("sha256").update(tripId + bookingToken).digest("base64url").slice(0, 6).toUpperCase();
       trip.booking = booking;
       store.save(trip);
 
@@ -333,7 +337,22 @@ export function createServer(): McpServer {
     { mimeType: RESOURCE_MIME_TYPE },
     async (): Promise<ReadResourceResult> => {
       const html = await fs.readFile(path.join(CARDS_DIR, "itinerary", "index.html"), "utf-8");
-      return { contents: [{ uri: ITINERARY_URI, mimeType: RESOURCE_MIME_TYPE, text: html }] };
+      return {
+        contents: [{
+          uri: ITINERARY_URI,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: html,
+          _meta: {
+            ui: {
+              csp: {
+                // The card's only external requests: Google Fonts stylesheet
+                // (@import in the bundled CSS) and the font files themselves.
+                resourceDomains: ["https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+              },
+            },
+          },
+        }],
+      };
     },
   );
 

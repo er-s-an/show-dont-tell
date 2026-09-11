@@ -11,8 +11,10 @@ npm start &                 # MCP server → http://localhost:3001/mcp
 node scripts/smoke.mjs      # 11/11 checks, no credentials required
 ```
 
-Last verified: **2026-09-11**, against a freshly started server on a clean port —
-**11/11 passed** (`scripts/smoke.mjs`).
+Last verified: **2026-09-11** — unit tests **30/30** (`npm test`), smoke **11/11**
+(`scripts/smoke.mjs`), e2e **16/16** (`scripts/e2e.mjs`, asserting real MCP wire
+traffic and the on-disk store, failing on any pageerror), restart-recall **7/7**
+(`scripts/restart-recall.mjs`).
 
 ---
 
@@ -26,7 +28,7 @@ Stage 1 asks two binary questions. Both are answered by code, not prose.
 | **Runtime use of the required technology** | Is the track tech *imported and actually called* — not just named? | `@modelcontextprotocol/server` and `@modelcontextprotocol/ext-apps/server` are imported and exercised: `new McpServer(...)` at `packages/server/src/server.ts:69` and six `registerAppTool` calls at `:76, :128, :169, :190, :229, :276`; `NodeStreamableHTTPServerTransport` and `app.all("/mcp")` at `packages/server/src/index.ts:21,24` | `npm start` then `node scripts/smoke.mjs`; the served endpoint answers `tools/list` with 6 tools |
 | **Spec version ≥ 2025-11-25 over Streamable HTTP** | Rules require 2025-11-25 "or a later version, once confirmed" | **MCP spec 2025-11-25** — the SDK's current `LATEST_PROTOCOL_VERSION`; served session-lessly (`sessionIdGenerator: undefined`, no `Mcp-Session-Id`) over `POST /mcp` with an SSE-tolerant reader | `node -e "import('@modelcontextprotocol/server').then(m=>console.log(m.LATEST_PROTOCOL_VERSION))"` → `2025-11-25`; `packages/server/src/index.ts:18-24`; `scripts/smoke.mjs` |
 | **Agent Skill deliverable** (if claiming one) | Is there a working `SKILL.md` in the open format? | `skill/show-dont-tell/SKILL.md` — directory name matches the `name` field, `description` covers what *and* when, `license` / `compatibility` / `metadata` present, single-level references | Read the frontmatter; optional `skills-ref validate skill/show-dont-tell` |
-| **Repo requirements** | Public repo with an OSI license, code reachable | `LICENSE` (MIT) at repo root; `.gitignore` excludes `node_modules/`, `dist/`, `.data/` | ⚠️ **Not met yet** — the directory is not a git repository and has no remote. See open items. |
+| **Repo requirements** | Public repo with an OSI license, code reachable | `LICENSE` (MIT) at repo root; public at https://github.com/er-s-an/show-dont-tell; `.gitignore` excludes `node_modules/`, `dist/`, `.data/` | Open the repo URL in a private window |
 
 ## 2. Stage 2 — the four equally weighted criteria
 
@@ -58,9 +60,9 @@ Stage 1 asks two binary questions. Both are answered by code, not prose.
 | Claim | Evidence | Check |
 |---|---|---|
 | Solves a limitation voice genuinely has | Complex, multi-constraint tasks (compare, adjust, commit) are exactly where audio-only answers fail — the thesis of `README.md` and the 0:00–0:12 hook of `docs/demo-script.md` | Read the intro of `README.md` |
-| The risky moment — spending money — is handled with a real safety property | Quote and charge are separate tools; the token is single-use and expires; the refusal path is tested, not asserted (`server.ts:250-262,296-298`; `scripts/smoke.mjs`) | smoke checks 6–8 |
+| The risky moment — committing to pay — is handled with a real safety property | Quote and confirm are separate tools; the token is single-use and expires; the refusal path is tested, not asserted (`server.ts:250-262,296-298`; `scripts/smoke.mjs`). The booking itself is a simulated commitment — no hotel API or payment provider is called | smoke checks 6–8 |
 | Continuity that users actually ask for | "Which hotel did we book?" works days later, without any session to hold it, because the store is explicit (`store.ts`; `SKILL.md:21-23`) | smoke checks 9–10 |
-| The answer leaves the screen | Optional real push via ntfy.sh on confirmation (`server.ts:305-318`), driving the demo's phone/watch moment | Set `NTFY_TOPIC`, confirm a booking, receive the notification |
+| The answer leaves the screen | Optional real push via ntfy.sh on confirmation (`server.ts:305-318`) — verified live; a paired watch buzzes only if the phone relays it, and devices are not shown in the current video | Set `NTFY_TOPIC`, confirm a booking, receive the notification |
 | Honest scope = defensible impact | The project states plainly that Alexa+ cannot render MCP Apps yet and that the voice surface is simulated, then shows the capability built only on the standards the track points to | First paragraph of `README.md`; disclosure beats at 0:12 in `docs/demo-script.md` |
 
 ### 2.4 Quality of the Idea
@@ -90,29 +92,52 @@ also load-bearing: one of its entries produced a real architectural constraint.
 
 **Pass/fail items (must be true):**
 
-- [ ] Repo is **public**, with `LICENSE` (MIT) visible in the About area — *license present, repo not yet pushed*
-- [ ] Runtime hook is genuinely exercised — ✅ verified 11/11 via `scripts/smoke.mjs`
-- [ ] Demo video is **under 3 minutes**, public, and shows the experience running — *film per `docs/demo-script.md`*
-- [ ] Product feedback submitted — it is mandatory (*`docs/product-feedback.md`*)
-- [ ] All materials in English — ✅ this docs set and the repo docs are English
+- [x] Repo is **public**, with `LICENSE` (MIT) visible in the About area —
+  https://github.com/er-s-an/show-dont-tell
+- [x] Runtime hook is genuinely exercised — ✅ verified 11/11 via `scripts/smoke.mjs`
+- [ ] Demo video is **under 3 minutes**, public, and shows the experience running —
+  recorded (`docs/demo-video/show-dont-tell-demo.webm`, 66s, 720p, captioned);
+  **YouTube/Vimeo upload is the remaining human step**
+- [ ] Product feedback submitted — it is mandatory (*`docs/product-feedback.md`* is
+  ready to paste)
+- [x] All materials in English — ✅ this docs set and the repo docs are English
 
 **Scoring items (should be true):**
 
-- [ ] `packages/simulator/` implemented and able to drive the real server — **currently empty**; until then the pasteable story in `docs/submission.md` must not claim it, and the demo script must use the host-render fallback described at the top of `docs/demo-script.md`
-- [ ] `README.md` quickstart matches reality — `npm run dev -w @sdt/simulator` references a workspace that does not exist yet, and the description says spec 2026-07-28
-- [ ] **Protocol-revision claim matches the running server.** Today the server answers 2025-11-25 and *rejects* `MCP-Protocol-Version: 2026-07-28` with `-32000 Unsupported protocol version`; `server/discover` returns `-32601`. If the `createMcpHandler` migration (§3.4 of `docs/product-feedback.md`) lands, re-run that probe and only then update the version claim here and in `docs/submission.md` / `docs/demo-script.md`. **Never claim a revision without a request that proves it** — a judge can check it with one `curl`
-- [ ] `npm test` runs — the `@sdt/server` test script points at `dist/test/`, which has no source; today `npm test` fails with `Could not find 'dist/test/'`. Either add the unit tests or point the script at `scripts/smoke.mjs`; until then cite the smoke test, **not** `npm test`
-- [ ] Friction log entries dated and current through submission day — add the protocol-era finding (`docs/product-feedback.md` §3.4) to `friction-log.md`, which currently stops at two entries
-- [ ] Open Source mini challenge PR opened against `modelcontextprotocol/ext-apps` (the `_meta` guard); tick the box **only if** it exists
-- [ ] AWS Builder mini challenge — **leave unticked** unless Bedrock / AgentCore / Strands / SageMaker or Kiro Crew is genuinely used
+- [x] `packages/simulator/` implemented and able to drive the real server — verified
+  end-to-end by `scripts/e2e.mjs` (16/16)
+- [x] `README.md` quickstart matches reality — `npm run dev -w @sdt/simulator` works;
+  the truth table in the README labels Implemented / Simulated / Planned per claim
+- [x] **Protocol-revision claim matches the running server.** The server answers
+  2025-11-25 and *rejects* `MCP-Protocol-Version: 2026-07-28` with
+  `-32000 Unsupported protocol version`; `server/discover` returns `-32601`. Every doc
+  claims 2025-11-25 only. If the `createMcpHandler` migration (§3.4 of
+  `docs/product-feedback.md`) lands, re-run that probe and only then update the version
+  claim here and in `docs/submission.md` / `docs/demo-script.md`. **Never claim a
+  revision without a request that proves it** — a judge can check it with one `curl`
+- [x] `npm test` runs — 30 unit tests across engine and store, 30/30
+- [x] Friction log entries dated and current — `friction-log.md` holds three entries,
+  including the protocol-era finding (`docs/product-feedback.md` §3.4)
+- [x] Open Source mini challenge PR opened against `modelcontextprotocol/ext-apps`
+  (the `_meta` guard) — **ext-apps#775**, currently OPEN (review not yet answered as of
+  2026-09-11); rules state a merged PR is not required
+- [x] AWS Builder mini challenge — **left unticked**: no Bedrock / AgentCore / Strands /
+  SageMaker / Kiro Crew usage
+- [x] Fail-closed card — a failed tool call surfaces an error toast and books nothing;
+  local simulation exists only behind `?preview=1`; e2e exits non-zero with the backend
+  down
+- [x] Card hygiene — all server-interpolated fields escaped before `innerHTML`; the
+  `ui://` resource declares `_meta.ui.csp` for the two Google Fonts domains; fonts
+  degrade to local serif/sans stacks under a strict host
 
 **Things a judge will look for, and where they are:**
 
 | Judge instinct | Where it is satisfied |
 |---|---|
 | "Does it actually run?" | `npm install && npm run build && npm start`; `scripts/smoke.mjs` → 11/11 |
-| "Is the purchase real or theatre?" | Two-phase tools, expiring token, tested refusal path (`server.ts:250-298`) |
+| "Is the purchase real or theatre?" | Two-phase tools, expiring token, tested refusal path (`server.ts:250-298`) — honestly labelled a simulated commitment with the safety property enforced |
 | "Is the card real or a mockup?" | `ui://trip/itinerary.html` served as an MCP Apps resource from the built single-file bundle |
 | "Did they use the required technology at runtime?" | SDK v2 imports and calls in `server.ts` and `index.ts` |
 | "Which protocol revision does this actually serve?" | 2025-11-25 (the required version) over Streamable HTTP, session-less — verifiable with one `curl`; the 2026-07-28 upgrade is documented as verified-but-uncommitted in §3.4 of `docs/product-feedback.md` |
-| "Are they honest about what's simulated?" | `README.md`, `docs/submission.md`, and the 0:12 disclosure in the demo script |
+| "Are they honest about what's simulated?" | `README.md` truth table, `docs/submission.md`, and the 0:12 disclosure in the demo script |
+| "Does the memory survive a restart?" | `node scripts/restart-recall.mjs` → 7/7: confirm against one process, recall from a fresh one |

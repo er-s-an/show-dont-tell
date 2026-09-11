@@ -5,7 +5,7 @@
   "private": true,
   "description": "Show, Don't Tell — MCP Apps card views (itinerary, comparison, confirmation).",
   "scripts": {
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "dev": "vite build --watch",
     "preview": "vite build && echo 'cards built → dist/'"
   },
