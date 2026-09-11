@@ -4,3 +4,4 @@ dist/
 *.log
 .DS_Store
 docs/demo-video/*.webm
+docs/demo-video/frames/

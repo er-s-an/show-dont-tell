@@ -119,7 +119,7 @@ An npm-workspaces monorepo, no proprietary dependency anywhere in the critical p
   card is on screen.
 - **Simulator** (`packages/simulator`) — the Alexa+-style web experience: type a request,
   watch the real server answer, see the real card render, tap through to a real
-  confirmation. *(Not implemented yet — see the note at the top of this file.)*
+  confirmation. Verified end-to-end by `scripts/e2e.mjs` (golden path 6/6).
 - **Verification** (`scripts/smoke.mjs`) — an 11-check end-to-end harness with no
   credentials and no test framework: `tools/list` shape, the `ui://` declaration, plan,
   constraint-driven adjustment, quote-without-charge, wrong-token refusal, confirmation,
@@ -298,8 +298,8 @@ changes before 2026-10-23.
 
 ### Also verify before submitting (rules, not preferences)
 
-- [ ] Repo is **public**, with MIT `LICENSE` visible (it is present; the repo is not
-      pushed).
+- [ ] Repo is **public**, with MIT `LICENSE` visible (both true:
+      https://github.com/er-s-an/show-dont-tell).
 - [ ] Demo video is **under 3 minutes**, public on YouTube or Vimeo, and shows the
       experience running.
 - [ ] All written material is English (this document and the repo docs are).

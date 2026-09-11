@@ -6,7 +6,7 @@
  */
 import { chromium } from "playwright";
 import path from "node:path";
-import { mkdirSync, renameSync, readdirSync } from "node:fs";
+import { mkdirSync, renameSync, readdirSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -30,8 +30,11 @@ await page.waitForTimeout(1600);
 await context.close();
 await browser.close();
 
-const files = readdirSync(outDir).filter((f) => f.endsWith(".webm"));
-const latest = files[files.length - 1];
 const target = process.argv[2] ?? path.join(outDir, "show-dont-tell-demo.webm");
-renameSync(path.join(outDir, latest), target);
+const files = readdirSync(outDir)
+  .filter((f) => f.endsWith(".webm") && path.join(outDir, f) !== target)
+  .map((f) => ({ f, mtime: statSync(path.join(outDir, f)).mtimeMs }))
+  .sort((a, b) => b.mtime - a.mtime);
+if (!files.length) throw new Error("no recording produced");
+renameSync(path.join(outDir, files[0].f), target);
 console.log("recorded →", target);

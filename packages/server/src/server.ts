@@ -309,7 +309,7 @@ export function createServer(): McpServer {
         try {
           await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
             method: "POST",
-            headers: { "Title": "Show, Don't Tell — hotel booked", "Priority": "high" },
+            headers: { "Title": "Show, Don't Tell - hotel booked", "Priority": "high" },
             body: `${booking.hotelName} confirmed · $${booking.total} · ${booking.confirmation}`,
           });
         } catch (e) {

@@ -237,6 +237,13 @@ export const api = {
     if (!el) throw new Error(`demo click: ${selector} not found in card`);
     el.click();
   },
+  scrollCardTo: (selector: string) => {
+    const frames = threadEl.querySelectorAll<HTMLIFrameElement>(".card-frame");
+    const doc = frames[frames.length - 1]?.contentDocument;
+    const el = doc?.querySelector<HTMLElement>(selector);
+    if (!el) throw new Error(`demo scroll: ${selector} not found in card`);
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+  },
   caption: (text: string) => {
     const el = $("#captions");
     el.innerHTML = text;

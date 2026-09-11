@@ -117,8 +117,9 @@ function render(trip: TripCard) {
   heroWhereEl.textContent = trip.title.replace(/^Weekend in /, "") + " · California";
   titleEl.textContent = trip.title;
   const dog = /dog-friendly/i.test(trip.subtitle);
+  const subtitleText = trip.subtitle.replace(/\s*·\s*dog-friendly/i, "");
   subtitleEl.innerHTML =
-    `${ICONS.calendar}<span>${trip.subtitle}</span>` +
+    `${ICONS.calendar}<span>${subtitleText}</span>` +
     (dog ? `<span class="pref-badge">${ICONS.paw}dog-friendly</span>` : "");
   if (dog) {
     dogBtn.disabled = true;
@@ -168,8 +169,11 @@ function render(trip: TripCard) {
   });
 
   if (trip.booking?.status === "confirmed") {
+    closeSheet();
     showConfirmation(trip.booking.hotelName, trip.booking.confirmation ?? "—", trip.booking.total);
+    confirmationEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
     bookBtn.disabled = true;
+    bookBtn.innerHTML = `Booked ✓`;
   } else if (trip.booking?.status === "requires_confirmation") {
     // Chat-initiated booking: the quote arrives with the card — open the sheet.
     confirmationEl.hidden = true;
@@ -177,6 +181,10 @@ function render(trip: TripCard) {
   } else {
     confirmationEl.hidden = true;
     sheetEl.hidden = true;
+    bookBtn.disabled = false;
+    bookBtn.innerHTML = selectedHotel
+      ? `Book “${selectedHotel}” ${ICONS.arrow}`
+      : `Book “Our pick” ${ICONS.arrow}`;
   }
 }
 

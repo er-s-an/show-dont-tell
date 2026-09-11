@@ -22,7 +22,7 @@ fit the same windows if you record one.
   persistent label in the corner: `Alexa+ experience simulator`.
 
 > **Recording status (2026-09-11):** the simulator is implemented and the video has been
-> auto-recorded from it — `docs/demo-video/show-dont-tell-demo.webm` (57s, 720p, captioned,
+> auto-recorded from it — `docs/demo-video/show-dont-tell-demo.webm` (66s, 720p, captioned,
 > no voiceover needed). This script remains the reference if you want to re-record with
 > live narration: same beats, same timings.
 
@@ -52,7 +52,7 @@ fit the same windows if you record one.
 
 | | |
 |---|---|
-| **Picture** | Cursor in the request field. Type `Plan a weekend in Napa for two` (typed live, not pasted). Send. A beat of the assistant replying in one short line — under 25 words, per the skill's rule — then the card rises: hero scene, `Weekend in Napa Valley`, `Sat Sep 12 – Sun Sep 13 · 2 travelers`, the total counting up to `$1,947`. Slow vertical pan down the timeline: 10:00 drive up, 12:00 Oxbow Public Market, 14:00 winery, 17:30 check-in, 19:30 dinner, then Sunday's four stops. Pan to the hotel list — three options with ratings and nightly prices, `Our pick` tag on the first. |
+| **Picture** | Cursor in the request field. Type `Plan a weekend in Napa for two` (typed live, not pasted). Send. A beat of the assistant replying in one short line — under 25 words, per the skill's rule — then the card rises: hero scene, `Weekend in Napa Valley`, `Sat Sep 12 – Sun Sep 13 · 2 travelers`, the total counting up to `$1,369`. Slow vertical pan down the timeline: 10:00 drive up, 12:00 Oxbow Public Market, 14:00 winery, 17:30 check-in, 19:30 dinner, then Sunday's four stops. Pan to the hotel list — three options with ratings and nightly prices, `Our pick` tag on the first. |
 | **Caption** | `One request. Nine timed stops across two days, three hotels, one estimated total.` / `Scored from a curated Napa dataset — per slot, per constraint. Not a template.` |
 | **VO (optional)** | "Plan a weekend in Napa for two. The spoken answer stays short — one line — because the card is the answer. Two days, nine stops, three hotels, an estimated total. Every slot was scored against the venue data: rating, price, dog-friendliness, and whether it's the kind of place you can only do in Napa." |
 | **Judging land** | **Design** — the card as an interface: hierarchy, motion, readable density. **Tech Implementation** — `plan-weekend-trip` returns `ui://trip/itinerary.html`; structured output drives a real view. **Potential Impact** — the complex-answer problem answered with an interface. |
