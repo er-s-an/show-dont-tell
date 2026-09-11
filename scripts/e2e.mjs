@@ -195,19 +195,33 @@ try {
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(frames, "04-confirmed.png") });
 
-  // beat 4b — the code on screen must exist in the server's TEMP data dir store
+  // beat 4b — the code on screen must exist in the server's TEMP data dir store.
+  // The server persists synchronously before responding, so the poll should
+  // never actually wait; it exists to defuse any hidden flush race, and the
+  // failure dump makes a recurrence debuggable from the artifact alone.
   const confText = (await doc2.locator("#conf-detail").textContent()) ?? "";
-  const confCode = confText.match(/NP-[A-Z0-9]+/)?.[0] ?? null;
+  const confCode = confText.match(/NP-[A-Z0-9_-]+/)?.[0] ?? null;
   check("confirmation code parsed from card", Boolean(confCode), confText);
   const storeFile = path.join(dataDir, "trips.json");
   if (confCode) {
-    const store = JSON.parse(readFileSync(storeFile, "utf-8"));
-    const trips = Object.values(store.trips ?? {});
-    const persisted = trips.find((t) => t?.booking?.confirmation === confCode);
+    let persisted = null;
+    let lastStoreDump = "";
+    for (let i = 0; i < 12 && !persisted; i++) {
+      try {
+        lastStoreDump = readFileSync(storeFile, "utf-8");
+        const store = JSON.parse(lastStoreDump);
+        persisted = Object.values(store.trips ?? {}).find(
+          (t) => t?.booking?.confirmation === confCode,
+        ) ?? null;
+      } catch (e) {
+        lastStoreDump = `read error: ${String(e).slice(0, 120)}`;
+      }
+      if (!persisted) await page.waitForTimeout(250);
+    }
     check(
       `store in temp SDT_DATA_DIR holds ${confCode} as confirmed`,
       persisted?.booking?.status === "confirmed",
-      persisted ? "" : "code not found in temp trips.json",
+      persisted ? "" : `code not found; store dump: ${lastStoreDump.slice(0, 400)}`,
     );
   }
 

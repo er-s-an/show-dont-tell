@@ -302,11 +302,11 @@ export function createServer(): McpServer {
         return { content: [{ type: "text", text: "That booking quote expired or doesn't match. Please start again." }], isError: true };
       }
       booking.status = "confirmed";
-      // Hash, not raw base64: the code must differ per booking. A plain
-      // base64 of `tripId + token` shares its first 6 chars for every
-      // tripId that starts with "trip", giving every booking the same code.
+      // Hash, not raw base64: the code must differ per booking. Hex digest so
+      // the code stays a clean [A-Z0-9] — base64url can emit `-`/`_`, which
+      // both reads badly and breaks naive code parsers.
       booking.confirmation =
-        "NP-" + createHash("sha256").update(tripId + bookingToken).digest("base64url").slice(0, 6).toUpperCase();
+        "NP-" + createHash("sha256").update(tripId + bookingToken).digest("hex").slice(0, 6).toUpperCase();
       trip.booking = booking;
       store.save(trip);
 
