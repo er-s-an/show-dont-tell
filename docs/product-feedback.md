@@ -1,276 +1,107 @@
 # Product feedback — Alexa+ / MCP developer experience
 
-Team: **Show, Don't Tell** (Alexa+ track, *Build, Ship, Shape: Amazon Developer Hackathon*)
-Collected: **2026-09-10 → 2026-09-11**, while building a self-hosted MCP server, an MCP
-Apps card and an Agent Skill from scratch. Raw log with dates and severity:
-[`friction-log.md`](../friction-log.md) — §3.1 and §3.2 are logged there; §3.3 and §3.4
-were found by probing the running server and the published specs, and are written up here.
+Project: **Show, Don't Tell** — Alexa+ track, *Build, Ship, Shape: Amazon Developer Hackathon*.
 
-Everything below is from first-hand use. Where we could not verify something, we say so
-rather than guess.
-
----
+This feedback combines the project's dated September 10–12 development notes with direct inspection of the installed packages, current source and September 12 local demonstration. The implemented server and card are distinguished from the simulated Alexa+ host. We have not verified rendering or execution inside an actual Alexa+ host.
 
 ## 1. Which tools and platforms did you use?
 
-| Tool / standard | Version | How we used it |
+| Tool | Version or status in this build | Actual use |
 |---|---|---|
-| **MCP specification** | **2025-11-25** (required version) | Built the server against it: Streamable HTTP on `POST /mcp`, session-less serving (fresh server + transport per request, no `Mcp-Session-Id`) |
-| **MCP specification** | 2026-07-28 (next revision) | Attempted, and this is the most useful thing we learned — see §3.4. The installed SDK advertises 2025-11-25 as its latest and rejects a 2026-07-28 request unless the server is created through its `createMcpHandler` HTTP entry |
-| **MCP TypeScript SDK v2** | `@modelcontextprotocol/server` 2.0.0, `/node` 2.0.0, `/express` 2.0.0 | Server, Streamable HTTP transport (`POST /mcp`), Express host |
-| **MCP Apps** | `@modelcontextprotocol/ext-apps` 2.0.0, spec 2026-01-26 (stable) | `registerAppTool` + `registerAppResource`, one `ui://trip/itinerary.html` view written with the `App` class |
-| **MCP TypeScript SDK** | `@modelcontextprotocol/client` 2.0.0 | Client-side types inside the card view |
-| **Agent Skills** | open standard, `agentskills.io/specification` | Shipped `skill/show-dont-tell/SKILL.md` (orchestration rules) |
-| **Alexa+ for Builders** | preview, announced 2026-07-23 | Evaluated as the integration target; could not test it (see §3.3) |
-| **ntfy.sh** | public service | Optional push on confirmed booking (the demo's phone/watch notification) |
+| MCP | 2025-11-25 | Self-hosted Streamable HTTP endpoint at `POST /mcp`; a fresh server and transport are constructed per request. |
+| MCP TypeScript SDK | `@modelcontextprotocol/server`, `/node`, `/express`: 2.0.0 | Server, HTTP transport and Express adapter. The installed server package exports `LATEST_PROTOCOL_VERSION = "2025-11-25"`; rechecked September 12. This is a statement about our installed version, not npm's current latest release. |
+| MCP Apps | `@modelcontextprotocol/ext-apps` 2.0.0 | Tool-to-view metadata, one `ui://trip/itinerary.html` resource, and a card that calls server tools through the host bridge. |
+| Agent Skills | Included portable contract | `skill/show-dont-tell/SKILL.md` describes intended orchestration. No model host loads it at runtime in this build. |
+| Alexa+-style simulator | Implemented local web simulation | Typed text stands in for speech. A deterministic phrase router selects the trip tools; it is not a model-powered autonomous agent. |
+| Build and application tooling | npm workspaces, TypeScript, Vite, Express, Zod | Monorepo build, self-contained card resource, runtime HTTP endpoint and schema validation. |
+| ntfy.sh | Optional code path, unused in the film | Disabled unless both `SDT_ALLOW_NTFY=1` and a non-empty topic are supplied. Fresh capture forcibly disabled it. |
 
-Runtimes: Node.js 22, TypeScript 5.9, Vite 6, Express 5, Zod 4.
+The prototype uses curated Napa example data. Hotel inventory, prices and booking commitments are simulated. No real reservation is made and no money moves.
 
-## 2. What worked well
+## 2. What worked well?
 
-**Serving without a session is genuinely simpler to deploy, and it is the single best
-decision we made.** We did not need sticky sessions, a session store, or a stateful proxy:
-each request gets a fresh server instance and a transport with
-`sessionIdGenerator: undefined`, and the server runs behind ordinary HTTP. The SDK's own
-documentation calls this "the established stateless idiom," and it is exactly right for a
-self-hosted server whose host may be running anywhere. It also made our architecture
-honest — with no session to lean on, "remember this trip" stopped being a transport
-accident and became an explicit, testable store in our own code. Anyone building an
-Alexa+-facing server today should serve it statelessly.
+**Structured output could remain an interface throughout the task.** A request produces an itinerary card rather than a long reply. The same card receives the adjusted tool result when Maya adds Pepper. In our fresh local demonstration, the visible plan changes from nine activities to eight and three stays to two; the example itinerary estimate changes from $1,369 to $609. These are changes in this fixture, not a claim about cost savings for travelers.
 
-**SDK v2 is coherent and the adapters are the right shape.** `createMcpExpressApp` plus
-`NodeStreamableHTTPServerTransport` gave us a working endpoint in a handful of lines, and
-splitting `server` / `client` / `node` / `express` into separate packages made the
-dependency surface obvious (the difference between what the server needs and what the
-card view needs was visible at install time, not at runtime).
+**Explicit state made continuity inspectable.** Stateless HTTP serving pushed trip state into a file-backed store keyed by trip and conversation identifiers. In the recorded flow, `New day` clears the transcript while retaining the same simulated identity. `list-trips` and `get-trip` then return the same hotel and simulated receipt. The visible result can be compared directly with the earlier confirmation. A separate earlier restart harness covers process-restart persistence; the film does not substitute a transcript reset for that test.
 
-**MCP Apps is the most product-shaped thing in the ecosystem.** In an afternoon we had a
-card that adopts the host's theme and style variables, renders a two-day itinerary,
-re-scores itself in place when the user changes a constraint, and carries a purchase
-confirm sheet. Two specific things are well designed: the contract is *data in, UI out*
-(`_meta.ui.resourceUri` + structured tool output) rather than a bespoke rendering API;
-and the view can call other server tools through the host (`app.callServerTool`), which
-is what makes in-place adjustment possible at all. The `ui://` resource is a single
-self-contained HTML file in our build, so there is nothing to deploy beside the server.
+**Tool calls from the card support a useful review flow.** The first hotel action returns an itemized quote. A separate card click calls `confirm-booking`. This gives the person time to inspect one night, fees and total before the demo records its simulated commitment. The server validates pending state and a single-use, expiring quote token. We distinguish that mechanism from proof of human authorization: the server does not authenticate the click or forbid an arbitrary client from calling both tools in sequence.
 
-**Agent Skills turned out to be a restraint mechanism, not documentation.** Writing
-`SKILL.md` forced us to state rules an agent would otherwise improvise, e.g. "never chain
-`book-hotel` into `confirm-booking` in a single turn" and "when a card is on screen, keep
-the spoken reply under 25 words." Those are exactly the invariants that a JSON schema
-cannot express. The format itself is small, readable and self-documenting; the
-progressive-disclosure model (metadata always loaded, body on activation, resources on
-demand) matched how we wanted to distribute orchestration logic.
+**The Skill format helped us state intentions clearly.** The included contract says when to show the card, retain the conversation identifier and keep quote and confirmation separate. That is useful distribution documentation. Its presence does not establish that a host executes those rules, so runtime claims rest on the server and card.
 
-**Errors are legible.** The failure messages told us where to look within minutes, and the
-smoke harness — eleven checks over plain HTTP, seven of them tool calls — was enough to
-verify the whole booking and recall path without any mock framework.
+## 3. What should be improved?
 
-## 3. What should be improved
+### 3.1 Tolerate omitted `_meta` in `registerAppTool`
 
-Four items, ordered by how much they cost us. The first two are in the raw log with
-reproduction steps; the third is a documentation gap, not a bug, and it is the biggest
-single source of uncertainty for anyone entering this track; the fourth is a trap we
-walked into ourselves and would most want fixed.
+**Task:** register a tool that returns text without a UI resource.
 
-### 3.1 `registerAppTool` crashes when a tool has no UI — Medium
+**Expected:** omitting UI metadata is accepted, or rejected with a clear validation/type error.
 
-**What we did:** registered a text-only tool with no `_meta` (a legal shape — not every
-tool returns a card).
+**Observed:** the dated development log records `TypeError: Cannot read properties of undefined (reading 'ui')`. Direct inspection of the installed ext-apps 2.0.0 helper still shows the unguarded path: it assigns `config._meta`, then reads `.ui` from that value. The declaration treats metadata as optional.
 
-**Expected:** a missing or empty `_meta` is tolerated.
+**Current workaround:** our text-only `list-trips` tool passes `_meta: {}`.
 
-**Actual:** the first request died with
-`TypeError: Cannot read properties of undefined (reading 'ui')`. In ext-apps 2.0.0,
-`registerAppTool` dereferences `config._meta.ui` with no guard.
+**Suggested improvement:** normalize omitted metadata to an empty object and add regression coverage for both omitted and empty metadata. Preserve the ability to register tools that do not render a card. A clear compile-time requirement would also be preferable to an unexplained runtime dereference.
 
-**Workaround:** pass `_meta: {}` on every tool (this is what our server does today; see
-`packages/server/src/server.ts`, the `list-trips` tool).
+Related contribution URL recorded by the project: [ext-apps PR #775](https://github.com/modelcontextprotocol/ext-apps/pull/775). This feedback does not claim the contribution was accepted or merged.
 
-**Suggested fix:** either default inside the helper (`config._meta ?? {}`) or, better,
-mark `_meta` as **required** in the `registerAppTool` TypeScript signature so the failure
-appears at compile time instead of on the first request. A runtime `TypeError` on a
-plausible input is the kind of thing an agent-host integration will hit in production.
-We consider this upstream-worthy and intend to open a PR (see the Open Source mini
-challenge).
+### 3.2 Make starter build prerequisites explicit
 
-### 3.2 The `basic-server-vanillajs` starter template silently requires bun — Low
+**Task:** build the `basic-server-vanillajs` starter using its Node-oriented setup path.
 
-**What we did:** followed the ext-apps README's Getting Started for the starter server.
+**Observed:** the checked-out template's `package.json` contains `bun build` commands. The dated project notes report that this was not apparent from the setup prerequisites and blocked a Node-only attempt.
 
-**Expected:** the README's stated prerequisites (Node.js 20+) plus `npm run build`.
+**Workaround:** install the required Bun runtime, or use a Node-based bundling step in the application.
 
-**Actual:** the build script runs `bun build server.ts ...` and fails immediately in a
-Node-only environment. The README does not mention bun anywhere.
+**Suggested improvement:** make the template's prerequisites match its actual scripts. A small clean-environment build check would catch a README that promises a Node-only path while relying on another executable. This feedback applies to the inspected template snapshot; it does not claim every current template has the issue.
 
-**Workaround:** `brew install bun`, or replace the build step with `tsc` / `esbuild`.
+### 3.3 Make the served protocol revision visible
 
-**Suggested fix:** list bun in the prerequisites, or use a Node-native bundler so the
-template's promise matches the template's requirements. This is a small thing that costs
-every newcomer the same ten minutes — and it is the first ten minutes, which is the worst
-place to lose someone.
+**Task:** determine which MCP revision an installed SDK and a chosen serving entry point actually expose.
 
-### 3.3 There is no public documentation for how Alexa+ consumes an MCP server — highest impact
+**Observed now:** our pinned SDK exports 2025-11-25 as its default version. The project's current entry creates `McpServer` and `NodeStreamableHTTPServerTransport` directly. Its source has not been migrated to `createMcpHandler`.
 
-This is a gap, not a bug, and we want to be precise about it.
+**Recorded earlier:** the September 11 debug notes report an unsupported-version error for a 2026-07-28 request on the original entry, and describe a separate successful experiment using the newer HTTP entry. That experiment is not the implementation shown in the film and was not rerun during this material refresh.
 
-**What we did:** tried to build the integration the Alexa+ track describes — bring your
-own MCP server so Alexa+ can use it.
+**Suggested improvement:** provide a compact table mapping each SDK entry point to its default/supported revisions, log the served revision at startup, and include a version assertion in the reference smoke example. “The package contains support” and “this running endpoint serves that revision” should be easy to distinguish without reading internal comments.
 
-**What we found:** Amazon's July 2026 announcement says Alexa+ will inspect an MCP
-server, propose an integration path and generate a simulator-ready package. That is the
-entire public specification. We could not find answers to any of the questions a
-developer actually has:
+**Our current choice:** keep the submission claim at 2025-11-25. Any migration must be followed by a fresh request against the changed endpoint before the claim changes.
 
-- Which MCP **spec versions** does Alexa+ accept — 2025-11-25 only, or 2026-07-28 too?
-  The rules allow "a later version, once confirmed," but nothing says how confirmation happens.
-- Which **transport** endpoints does the platform call, and from where? Does it reach a
-  locally hosted server, or must it be public HTTPS?
-- What is the **authorization** model? Pre-registered client, CIMD, or something Amazon-specific?
-- What **capabilities** does the platform expose to a tool — can it render any UI
-  (MCP Apps), or is output text/audio only?
-- What does a **"simulator-ready package"** mean as an artifact?
+### 3.4 Provide an explicit Alexa+ host test contract
 
-**Why this matters more than the others:** the Alexa+ track's rules tell
-entrants to follow the open MCP docs, which we did. But we could only make the *server*
-side definitive; every decision about the *integration* was an educated guess. A team
-with less spec experience would reasonably conclude that the Alexa+ surface is untestable
-and build a generic MCP demo instead — which is exactly the "basic MCP wrapper" the same
-rules list as the obvious, non-creative outcome. The documentation gap quietly pushes
-submissions toward the thing the judges don't want.
+**Task:** test the server and interactive card with the platform targeted by the project.
 
-**Suggested fix, in increasing order of usefulness:**
+**Boundary encountered:** during the team's September 10–11 research, we did not establish an accessible host integration path that we could use to verify this experience. Our present build remains a labelled web simulation. This is an account of what we could test, not a blanket claim that Alexa+ lacks MCP Apps support or that no later platform documentation exists.
 
-1. **Publish a one-page integration contract** for Alexa+ ⇄ MCP: supported spec version(s),
-   transport, URL requirements, auth mechanism, and whether server-initiated UI is
-   rendered. Even a draft table would remove most of the uncertainty.
-2. **Publish one worked example** — a minimal public MCP server plus the exact steps to
-   get it into the Alexa+ simulator, with the request/response trace the platform sends.
-   One real log is worth more than a page of prose.
-3. **State the UI roadmap explicitly**, even if the answer is "not supported yet." A
-   sentence like "Alexa+ currently renders text and audio only; MCP Apps rendering is on
-   the roadmap" would let teams design for it honestly instead of hedging in the video.
-4. **Open the Alexa+ for Builders portal** (or publish its acceptance criteria and
-   timeline) — today it is the only path to a real integration, and there is no visible
-   way in for an individual developer or a hackathon team.
+**What would help:** a versioned integration page stating accepted MCP revisions, transport and endpoint requirements, authorization, UI capabilities, and the exact form of a simulator-ready artifact. A minimal worked example with an actual host request/response trace would let developers separate server correctness from host compatibility.
 
-**What we did instead:** built strictly on the open, versioned standards the track points
-to (MCP 2025-11-25 over Streamable HTTP, MCP Apps, Agent Skills) so nothing is wasted
-whichever way the platform lands, and made the demo a simulator of the Alexa+ experience
-rather than a claim about the unverifiable integration. We would much rather have been
-able to test against the real thing.
+UI support should be stated directly as supported, unsupported or preview/conditional. We would then know which capabilities to test instead of inferring them from the general standards.
 
-### 3.4 The newest protocol revision is opt-in, and nothing tells you that — Medium
+### 3.5 Include a same-card update and sizing example
 
-This one is our own near-miss, and it is the finding we would most want the SDK team to
-see, because it is a trap for exactly the kind of team this hackathon attracts.
+**Task:** change an existing itinerary without losing the card's connection or making the changed result hard to see.
 
-**What we did:** read the 2026-07-28 changelog, designed around the newer revision, and
-hand-wired our endpoint the obvious way — one `McpServer` and one
-`NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined })` per request,
-`server.connect(transport)`, `transport.handleRequest(...)`. That is the pattern shown in
-most existing 2.x code.
+**Current implementation:** the simulator retains the active iframe in its DOM position, moves the new utterance above it, and sends the result through the existing bridge. It measures the real card content and keeps the trigger and change summary in view. The fresh recording and capture metadata show exactly one card before and after the adjustment.
 
-**What we found when we checked:** the installed `@modelcontextprotocol/server@2.0.0`
-(npm `latest`) exports `LATEST_PROTOCOL_VERSION = "2025-11-25"` and
-`SUPPORTED_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05",
-"2024-10-07"]`. Sending a request with `MCP-Protocol-Version: 2026-07-28` gets:
+**Suggested improvement:** provide a small reference host test for tool-result updates, iframe sizing, long-content scrolling and reduced-motion behavior. The example should demonstrate a continuing interaction, not just the initial successful render. These host details directly affect whether a person understands what changed.
 
-```
--32000 Bad Request: Unsupported protocol version: 2026-07-28
-(supported versions: 2025-11-25, 2025-06-18, 2025-03-26, 2024-11-05, 2024-10-07)
-```
+### 3.6 Separate interface confirmation from authorization guarantees
 
-`server/discover` (mandatory in that revision) answers `-32601 Method not found`.
+**Task:** explain what a two-step quote/confirm example actually guarantees.
 
-**The thing that is easy to miss:** the SDK *does* implement the modern revision — there
-is a 2026-era codec, `FIRST_MODERN_PROTOCOL_VERSION = "2026-07-28"`, and cache-hint
-machinery in the same build. It is served by the SDK's HTTP entry point,
-`createMcpHandler(...)`, which also installs the `server/discover` handler. Servers
-constructed by hand keep serving the legacy era and answering `-32601`, and **nothing
-warns you**: no deprecation notice, no log line, no type error. We only caught it because
-we sent a request with the modern header and read the error. A source comment in the
-package confirms it ("Hand-constructed instances are unaffected… they keep answering
-`-32601` unless their own supported-versions list opts into a modern revision"), but that
-is not where a developer looks.
+**Finding from our own implementation:** a distinct confirmation control and an expiring token make the demonstrated state transition clearer. They do not by themselves prove that a human authorized the action. A client holding the token can call the confirmation tool.
 
-**Why it matters beyond us:** the whole point of the newer revision is the stateless,
-envelope-per-request model. A team that *thinks* it is on 2026-07-28 but is quietly
-serving 2025-11-25 has a version claim they cannot defend, and judges and integrators
-absolutely can check it with one `curl`. We nearly shipped that claim.
+**Suggested improvement:** sample applications should label three separate responsibilities: the interface presents and captures a decision; the server validates the quote and state transition; the production host or application supplies any required user authorization. This would discourage teams from describing a prompt instruction or tool split as an unbreakable safety boundary.
 
-**Suggested fix:** make the era visible and deliberate.
+## 4. How was the onboarding experience?
 
-1. **Emit a startup warning** when a server is constructed with no modern revision in its
-   supported list, naming the entry point that serves one.
-2. **Put `SUPPORTED_MODERN_PROTOCOL_VERSIONS` in the default set** (or document in the
-   README which entry point serves which eras, in a table).
-3. **Expose the era on the instance** so a server can log or assert what it is actually
-   serving, and add one line to the docs: "hand-constructed servers serve the legacy era
-   by default."
-4. **Ship a version-assertion in the reference smoke test** — a single request with the
-   modern header that fails loudly when the answer is `Unsupported protocol version`. It
-   costs the SDK team nothing and prevents an entire class of unfounded compliance claims.
+The server/transport adapters and tool-to-resource mapping gave us a practical starting point. The difficult parts were matching the installed SDK's served revision to our wording, and implementing the host behavior around a continuing card. The comments and current code now make those responsibilities explicit.
 
-**On our side:** the migration is confined to `packages/server/src/index.ts` (serve
-through `createMcpHandler`). We verified locally that it works — the entry answers
-`server/discover` with `{"supportedVersions":["2026-07-28"]}` and returns the revision's
-required `ttlMs` / `cacheScope` list hints — and we are sequencing it before the deadline
-rather than claiming it in advance.
+The dated development notes also record a cross-version Node test-entry issue. The current server package uses a shell-expanded `node --test dist/test/*.test.js` command. We retain the existing recorded Node 20/22/25 results rather than presenting them as a new matrix run from this feedback refresh.
 
-## 4. Onboarding experience
+For the latest film, we built a scratch copy of the current source, used a temporary store, disabled notifications and blocked nonlocal browser requests. That gave us a reproducible local path through the real MCP endpoint while preserving the original working tree and data. A similarly isolated example in the starter documentation would help teams capture demonstrations without accidental external effects.
 
-**Getting a server running: fast.** With SDK v2 and a session-less transport we had a
-working Streamable HTTP endpoint answering `tools/list` on day one. The 2026-07-28
-changelog is well written and the breaking changes are clearly enumerated, which made the
-version question a decision rather than a discovery process — though, as §3.4 shows, the
-SDK currently serves the older revision by default, so the decision and the delivered
-behavior were not the same thing.
+## 5. Would we use these tools again?
 
-**Getting a card on screen: fast, then fiddly.** The `_meta.ui.resourceUri` → `ui://`
-resource → sandboxed iframe model was easy to grasp and we had an interactive card
-rendering quickly. The fiddly part is that a card is developed against a *host*, and the
-host is the variable: theme variables, style variables and available capabilities differ.
-Two asks: (a) a documented, versioned list of what the host guarantees to a view, and
-(b) a first-class local dev host in the SDK so card development does not start with
-"which host do I test in?"
+Yes, for this interaction pattern. MCP supplies the tools, MCP Apps supplies a continuing interface, and explicit application state makes the result inspectable when the person returns. The strongest next improvement is a verified host integration path and clearer boundaries around versioning, view behavior and authorization.
 
-**Agent Skills: the smoothest part of the whole project.** One directory, one `SKILL.md`
-with YAML frontmatter, optional `scripts/` and `references/`. The spec's field
-constraints (name ≤ 64 chars and matching the parent directory, description 1–1024
-characters covering both what and when) are checkable by reading, and the validation tool
-(`skills-ref validate`) is the right size for the job.
-
-**The confusing part was scope, not mechanics.** The Alexa+ track offers "a working Agent
-Skill **or** a self-hosted MCP server." Those are different deliverables with different
-runtime hooks, and the product feedback questions assume both are platform integrations.
-We resolved it by shipping both, with the skill driving the server, which is the only
-combination where the Agent Skill has something real to orchestrate. That is worth
-clarifying in the track description — "or" left us guessing about what the judges weigh.
-
-**Friction cost, summed up:** roughly an hour lost to the two tooling bugs in §3.1 and
-§3.2, a further afternoon to the protocol-era trap in §3.4, and substantially more than
-that deciding how to present an integration we could not test.
-
-## 5. Would we use these again?
-
-**Yes — MCP, SDK v2, MCP Apps and Agent Skills, without hesitation.** The session-less
-serving model made deployment simpler, MCP Apps gave our product an interface instead of a
-text response, and Agent Skills gave it rules. Between them they cover the three things
-this project needed: tools, UI, and judgment. Two concrete caveats, both fixable: we would
-serve through the SDK's `createMcpHandler` entry from day one (§3.4) so that the protocol
-revision we chose is the one we actually speak, and we would verify the served version
-with a request rather than with a changelog. We are also planning to move our confirmation
-step onto MRTR (`resultType: "input_required"`) once we are on the 2026-07-28 revision,
-which is the spec-native version of the two-phase booking commitment we ship today.
-
-**On Alexa+ specifically: yes, and that is the point of this feedback.** The concept is
-the most interesting voice surface we have seen, because it is the first one with a
-credible path to real interfaces and real transactions. What is missing is not
-capability — it is a contract we can build against. Publish the integration page and the
-portal, and this goes from "we built for the standards and simulated the host" to "we
-built for Alexa+."
-
-**One more request, for the standards community rather than Amazon:** the ecosystem is
-currently excellent at *server-side* DX and thin on *view-side* DX. The template bug and
-the unguarded `_meta` read are both small, but they land on the very first steps of card
-development, which is precisely where MCP Apps is trying to compete for adoption.
+The current experience already supports the story we can demonstrate: plan, adjust, review, record a simulated commitment and recall. We would not add an unverified model-agent, live inventory or payment claim simply to make the description sound more advanced.

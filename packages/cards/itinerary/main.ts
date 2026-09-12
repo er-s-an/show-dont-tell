@@ -75,12 +75,21 @@ const esc = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const heroWhereEl = $("#hero-where");
+const cardEl = $("#card");
 const titleEl = $("#trip-title");
 const subtitleEl = $("#trip-subtitle");
 const timelineEl = $("#timeline");
 const hotelListEl = $("#hotel-list");
 const hotelCountEl = $("#hotel-count");
 const totalEl = $("#total");
+const contractStatusEl = $("#contract-status");
+const contractIntentEl = $("#contract-intent");
+const contractChangeEl = $("#contract-change");
+const contractCommitEl = $("#contract-commit");
+const changeFlashEl = $("#change-flash");
+const changeStopsEl = $("#change-stops");
+const changeHotelsEl = $("#change-hotels");
+const changeTotalEl = $("#change-total");
 const sheetEl = $("#sheet");
 const sheetRowsEl = $("#sheet-rows");
 const sheetNoteEl = $("#sheet-note");
@@ -130,19 +139,46 @@ function countUp(el: HTMLElement, target: number, prefix = "$") {
 }
 
 function render(trip: TripCard) {
+  const previousTrip = currentTrip;
+  const wasDogFriendly = currentTrip ? /dog-friendly/i.test(currentTrip.subtitle) : false;
   currentTrip = trip;
   pendingToken = trip.bookingToken ?? null;
 
-  heroWhereEl.textContent = trip.title.replace(/^Weekend in /, "") + " · California";
+  const destination = trip.title.replace(/^Weekend in /, "");
+  heroWhereEl.textContent = `Example dataset · ${destination}`;
   titleEl.textContent = trip.title;
   const dog = /dog-friendly/i.test(trip.subtitle);
+  const dogFriendlyJustApplied = Boolean(previousTrip) && !wasDogFriendly && dog;
   const subtitleText = trip.subtitle.replace(/\s*·\s*dog-friendly/i, "");
   subtitleEl.innerHTML =
     `${ICONS.calendar}<span>${esc(subtitleText)}</span>` +
     (dog ? `<span class="pref-badge">${ICONS.paw}dog-friendly</span>` : "");
-  if (dog) {
-    dogBtn.disabled = true;
-    dogBtn.innerHTML = `${ICONS.paw} Dog-friendly ✓`;
+  dogBtn.disabled = dog;
+  dogBtn.innerHTML = dog
+    ? `${ICONS.paw} Dog-friendly ✓`
+    : `${ICONS.paw} Make it dog-friendly`;
+
+  contractIntentEl.textContent = `${destination} · ${subtitleText}`;
+  contractChangeEl.textContent = dog
+    ? "Pepper joins · incompatible stops replaced"
+    : "Stops, constraints, and hotel choice";
+  contractStatusEl.textContent = "Draft · nothing committed";
+  contractCommitEl.textContent = "Only your explicit confirmation";
+
+  if (dogFriendlyJustApplied) {
+    const countStops = (value: TripCard) =>
+      value.days.reduce((sum, day) => sum + day.items.length, 0);
+    changeStopsEl.textContent = `${countStops(previousTrip!)} → ${countStops(trip)}`;
+    changeHotelsEl.textContent = `${previousTrip!.hotels.length} → ${trip.hotels.length}`;
+    const money = (value: number) => `$${value.toLocaleString("en-US")}`;
+    changeTotalEl.textContent = `${money(previousTrip!.estimatedTotal)} → ${money(trip.estimatedTotal)}`;
+    cardEl.classList.remove("is-replanning");
+    void cardEl.offsetWidth;
+    cardEl.classList.add("is-replanning");
+    changeFlashEl.hidden = false;
+    changeFlashEl.classList.remove("is-visible");
+    void changeFlashEl.offsetWidth;
+    changeFlashEl.classList.add("is-visible");
   }
 
   timelineEl.innerHTML = trip.days.map((day) => `
@@ -161,7 +197,7 @@ function render(trip: TripCard) {
   hotelCountEl.textContent = `${trip.hotels.length} options`;
   hotelListEl.innerHTML = trip.hotels.map((h, i) => `
     <button class="hotel ${h.tag ? "recommended" : ""} ${selectedHotel === h.name ? "selected" : ""}"
-            data-hotel="${esc(h.name)}" style="animation-delay:${i * 70}ms">
+            data-hotel="${esc(h.name)}" aria-pressed="${selectedHotel === h.name}" style="animation-delay:${i * 70}ms">
       ${h.tag ? `<span class="tag">${esc(h.tag)}</span>` : ""}
       <span class="scene-strip">${HOTEL_SCENES[SCENE_BY_INDEX[i % 3]]}</span>
       <span class="hotel-body">
@@ -180,7 +216,16 @@ function render(trip: TripCard) {
   hotelListEl.querySelectorAll<HTMLButtonElement>(".hotel").forEach((el) => {
     el.addEventListener("click", () => {
       selectedHotel = el.dataset.hotel === selectedHotel ? null : (el.dataset.hotel ?? null);
-      hotelListEl.querySelectorAll<HTMLButtonElement>(".hotel").forEach((x) => x.classList.toggle("selected", x.dataset.hotel === selectedHotel));
+      hotelListEl.querySelectorAll<HTMLButtonElement>(".hotel").forEach((x) => {
+        const selected = x.dataset.hotel === selectedHotel;
+        x.classList.toggle("selected", selected);
+        x.setAttribute("aria-pressed", String(selected));
+      });
+      contractChangeEl.textContent = selectedHotel
+        ? `Hotel choice · ${selectedHotel}`
+        : dog
+          ? "Pepper joins · incompatible stops replaced"
+          : "Stops, constraints, and hotel choice";
       bookBtn.innerHTML = selectedHotel
         ? `Book “${esc(selectedHotel)}” ${ICONS.arrow}`
         : `Book “Our pick” ${ICONS.arrow}`;
@@ -193,9 +238,13 @@ function render(trip: TripCard) {
     confirmationEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
     bookBtn.disabled = true;
     bookBtn.innerHTML = `Booked ✓`;
+    contractStatusEl.textContent = "Committed by Maya's explicit confirmation";
+    contractCommitEl.textContent = `Receipt ${trip.booking.confirmation ?? "saved"} · recallable later`;
   } else if (trip.booking?.status === "requires_confirmation") {
     // Chat-initiated booking: the quote arrives with the card — open the sheet.
     confirmationEl.hidden = true;
+    contractStatusEl.textContent = "Waiting for Maya · nothing booked";
+    contractCommitEl.textContent = "Quote held 10 min · explicit tap required";
     openSheet(trip.booking);
   } else {
     confirmationEl.hidden = true;
@@ -216,7 +265,11 @@ function openSheet(b: BookingInfo) {
     <div class="sheet-row"><span>${ICONS.receipt} Taxes &amp; fees</span><span>$${esc(b.taxes)}</span></div>
     <div class="sheet-row total-row"><span>Total</span><span class="num">$${esc(b.total)}</span></div>`;
   sheetNoteEl.innerHTML = `${ICONS.shield}<span>Nothing is booked until you confirm. Quote held for 10 minutes.</span>`;
+  contractStatusEl.textContent = "Waiting for Maya · nothing booked";
+  contractCommitEl.textContent = "Quote visible · explicit tap required";
   sheetEl.hidden = false;
+  sheetEl.setAttribute("role", "region");
+  sheetEl.setAttribute("aria-labelledby", "sheet-title");
   sheetEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
 }
 
@@ -225,6 +278,8 @@ function closeSheet() { sheetEl.hidden = true; }
 function showConfirmation(hotel: string, conf: string, total: number) {
   confHotelEl.textContent = hotel;
   confDetailEl.textContent = `Booked · $${total} · Confirmation ${conf}`;
+  contractStatusEl.textContent = "Committed by Maya's explicit confirmation";
+  contractCommitEl.textContent = `Receipt ${conf} · recallable later`;
   confirmationEl.hidden = false;
 }
 
@@ -274,7 +329,11 @@ dogBtn.addEventListener("click", async () => {
     console.error(e);
     showError("Couldn't reach the trip server. The plan is unchanged.");
   }
-  finally { setTimeout(() => { dogBtn.disabled = false; }, 600); }
+  finally {
+    setTimeout(() => {
+      dogBtn.disabled = Boolean(currentTrip && /dog-friendly/i.test(currentTrip.subtitle));
+    }, 600);
+  }
 });
 
 bookBtn.addEventListener("click", async () => {

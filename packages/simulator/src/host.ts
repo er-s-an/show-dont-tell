@@ -35,6 +35,9 @@ export async function embedCard(opts: {
 
   const iframe = document.createElement("iframe");
   iframe.className = "card-frame";
+  // Start below content height so the first app size report can grow to the
+  // intrinsic document size instead of inheriting a browser iframe minimum.
+  iframe.style.height = "1px";
   iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms");
   iframe.setAttribute("title", `${tool.name} card`);
   container.appendChild(iframe);
@@ -70,7 +73,15 @@ export async function embedCard(opts: {
   bridge.onupdatemodelcontext = async () => ({});
   bridge.onsizechange = async ({ height }) => {
     if (height !== undefined) {
-      iframe.style.height = `${Math.min(Math.round(height) + 4, 2400)}px`;
+      // `body.scrollHeight` is at least the current viewport height, so using
+      // it together with a +N fudge factor creates a positive feedback loop.
+      // Our same-origin srcdoc exposes its real app root; measure that box and
+      // use the reported value only as a pre-initialization fallback.
+      const appRoot = iframe.contentDocument?.body.firstElementChild;
+      const intrinsic = appRoot?.getBoundingClientRect().height;
+      const next = Math.min(Math.ceil(intrinsic && intrinsic > 0 ? intrinsic : height), 2400);
+      const current = Number.parseFloat(iframe.style.height) || 0;
+      if (Math.abs(current - next) > 1) iframe.style.height = `${next}px`;
     }
     return {};
   };

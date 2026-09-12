@@ -1,12 +1,11 @@
 /**
- * Records the self-narrating demo (?demo=1) to a webm video — hermetically.
+ * Records the human-story rehearsal (?demo=1) to a local WebM — hermetically.
+ * This output is a validation aid, never automatically a final submission.
  *
- * Spawns its own MCP server (temp SDT_DATA_DIR) and a `vite preview` of the
- * production simulator build, exposes window.sdtControl.{killServer,
- * startServer} so the in-page demo script can show the fail-closed beat and
- * the process-restart recovery for real, then saves the recording to
- * docs/demo-video/show-dont-tell-demo.webm (the previous recording is kept
- * alongside with a date suffix).
+ * Spawns its own MCP server (temp SDT_DATA_DIR, external notifications forced
+ * off) and a `vite preview` of the production simulator build, then saves a
+ * local rehearsal capture. Final narration, edit, review, and upload remain
+ * explicit human gates in docs/VIDEO-READY.md.
  *
  *   npm run build && node scripts/record-demo.mjs
  *   (first run needs the browser: npx playwright install chromium)
@@ -57,7 +56,13 @@ async function waitServer(timeoutMs = 15000) {
 let serverProc = null;
 function startServerProc() {
   serverProc = spawn(process.execPath, [path.join(root, "packages/server/dist/index.js")], {
-    env: { ...process.env, PORT: String(PORT_SERVER), SDT_DATA_DIR: dataDir },
+    env: {
+      ...process.env,
+      PORT: String(PORT_SERVER),
+      SDT_DATA_DIR: dataDir,
+      SDT_ALLOW_NTFY: "0",
+      NTFY_TOPIC: "",
+    },
     stdio: "ignore",
   });
   return serverProc;
@@ -110,14 +115,6 @@ try {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 720 },
     recordVideo: { dir: outDir, size: { width: 1280, height: 720 } },
-  });
-  await context.exposeFunction("sdtKillServer", async () => { await killServerProc(); });
-  await context.exposeFunction("sdtStartServer", async () => { startServerProc(); await waitServer(); });
-  await context.addInitScript(() => {
-    window.sdtControl = {
-      killServer: () => window.sdtKillServer(),
-      startServer: () => window.sdtStartServer(),
-    };
   });
   const page = await context.newPage();
   page.on("pageerror", (e) => console.log("[pageerror]", String(e).slice(0, 200)));

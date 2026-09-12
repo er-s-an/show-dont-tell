@@ -7,30 +7,81 @@
   <title>Show, Don't Tell — Alexa+ experience simulator</title>
 </head>
 <body>
-  <div class="device">
+  <div class="experience-shell" id="experience" data-stage="intent">
+    <aside class="story-rail" aria-labelledby="story-title">
+      <div>
+        <p class="story-kicker"><span>Maya + Pepper</span><span>Their first trip</span></p>
+        <h1 id="story-title">One wish.<br><em>A plan she can see.</em><br>Her final word.</h1>
+        <p class="story-deck">Maya is packing for a first weekend away with her partner and their newly adopted dog. She should not have to hold the whole plan in her head.</p>
+      </div>
+
+      <ol class="contract-steps" aria-label="Show, Don't Tell interaction contract">
+        <li class="contract-step" id="contract-intent" data-contract-stage="intent">
+          <span class="step-number">01</span>
+          <span><strong>Intent</strong><small>Say what you want naturally</small></span>
+        </li>
+        <li class="contract-step" id="contract-structure" data-contract-stage="structure">
+          <span class="step-number">02</span>
+          <span><strong>Structure</strong><small>Inspect and adjust the plan</small></span>
+        </li>
+        <li class="contract-step" id="contract-consent" data-contract-stage="consent">
+          <span class="step-number">03</span>
+          <span><strong>Consent</strong><small>Nothing commits without you</small></span>
+        </li>
+        <li class="contract-step" id="contract-continuity" data-contract-stage="continuity">
+          <span class="step-number">04</span>
+          <span><strong>Continuity</strong><small>Return to the same saved state</small></span>
+        </li>
+      </ol>
+
+      <div class="proof-note">
+        <span>The promise</span>
+        <strong>Nothing commits without Maya.</strong>
+        <small>Her intent becomes a plan she can inspect before it becomes an action.</small>
+      </div>
+    </aside>
+
+    <section class="device" aria-label="Simulated Alexa+ experience">
     <header class="topbar">
       <div class="brand">
         <div class="orb" aria-hidden="true"><div class="core"></div></div>
-        <span class="wordmark">Alexa&#8202;+</span>
-        <span class="sim-badge" title="This is a simulation of an Alexa+ experience, powered by a real MCP server">simulated</span>
+        <span class="wordmark">Show, Don’t Tell</span>
+        <span class="sim-badge" title="A simulated Alexa+ experience powered by a live local MCP server">Alexa+ surface · simulated</span>
       </div>
       <div class="topbar-right">
         <span class="day-chip" id="day-chip">Day 1</span>
-        <button class="newday" id="new-day" title="Start the next morning — same memory">
+        <button class="newday" id="new-day" title="Start a new transcript with the same simulated identity">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
           New day
         </button>
       </div>
     </header>
 
-    <div class="status-banner" id="status" hidden>
+    <div class="truth-strip" role="note" aria-label="Demo truth labels">
+      <span><b>Real MCP server + card</b> · simulated Alexa+ surface · fixture inventory · no money charged</span>
+    </div>
+
+    <section class="contract-now" aria-live="polite" aria-atomic="true">
+      <span class="contract-index" id="contract-index">01</span>
+      <span class="contract-copy">
+        <small id="contract-label">Intent</small>
+        <strong id="contract-state">Tell me the goal. No action happens yet.</strong>
+      </span>
+      <span class="contract-lock">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Human confirms
+      </span>
+    </section>
+
+    <div class="status-banner" id="status" role="status" aria-live="polite" hidden>
       <span id="status-text">Connecting to the MCP server…</span>
       <button id="status-retry">Retry</button>
     </div>
 
-    <main class="thread" id="thread"></main>
+    <main class="thread" id="thread" role="log" aria-live="polite" aria-relevant="additions"></main>
 
     <footer class="composer-wrap">
+      <p class="composer-promise">Voice names the intent. The interface carries the consequence.</p>
       <div class="chips" id="chips">
         <button class="chip">Plan a weekend in Napa for two</button>
         <button class="chip">Make it dog-friendly</button>
@@ -40,7 +91,8 @@
         <button class="mic" id="mic" aria-label="Voice input (simulated)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="6" height="12" x="9" y="2" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg>
         </button>
-        <input type="text" id="input" placeholder="Type to talk…" autocomplete="off" />
+        <label class="sr-only" for="input">Type a request for the simulated Alexa+ experience</label>
+        <input type="text" id="input" placeholder="Try “Plan a dog-friendly weekend for two”" autocomplete="off" />
         <button class="send" id="send" aria-label="Send">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
         </button>
@@ -52,7 +104,8 @@
       <div class="wire-title">MCP wire · tools/call</div>
       <div class="wire-log" id="wire-log"></div>
     </div>
-    <div class="truth-tag" id="truth-tag" hidden>Simulated Alexa+ surface · fixture data · nothing is charged</div>
+    <div class="truth-tag" id="truth-tag" hidden>Simulated surface · live MCP · fixture booking · no money moves</div>
+    </section>
   </div>
   <script type="module" src="./src/main.ts"></script>
 </body>

@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { DEFAULT_DATES, DESTINATION } from "./data/napa.js";
 import { buildDays, pickHotels, estimateTotal } from "./engine.js";
+import { resolveNtfyTopic } from "./notifications.js";
 import { TripStore, type TripState } from "./state/store.js";
 
 const CARDS_DIR =
@@ -152,6 +153,9 @@ export function createServer(): McpServer {
           isError: true,
         };
       }
+      const beforeStops = trip.days.reduce((sum, day) => sum + day.items.length, 0);
+      const beforeHotels = trip.hotels.length;
+      const beforeTotal = trip.estimatedTotal;
       const text = instruction.toLowerCase();
       if (/dog|puppy|pet/.test(text)) trip.prefs.dogFriendly = true;
       if (/cheaper|budget|save/.test(text)) trip.prefs.budget = "budget";
@@ -160,11 +164,16 @@ export function createServer(): McpServer {
       trip.days = buildDays(trip.prefs);
       trip.hotels = pickHotels(trip.prefs);
       trip.estimatedTotal = estimateTotal(trip.days, trip.hotels, trip.party);
+      const afterStops = trip.days.reduce((sum, day) => sum + day.items.length, 0);
       store.save(trip);
       return cardResult(
         trip,
-        `Updated: ${instruction}. New estimate $${trip.estimatedTotal} · ` +
-        `hotel pick is now ${trip.hotels[0].name}.`,
+        /dog|puppy|pet/.test(text)
+          ? `Pepper is in. Same card: ${beforeStops} → ${afterStops} activities · ` +
+            `${beforeHotels} → ${trip.hotels.length} stays · ` +
+            `$${beforeTotal.toLocaleString("en-US")} → $${trip.estimatedTotal.toLocaleString("en-US")}.`
+          : `Updated: ${instruction}. New estimate $${trip.estimatedTotal} · ` +
+            `hotel pick is now ${trip.hotels[0].name}.`,
       );
     },
   );
@@ -310,9 +319,10 @@ export function createServer(): McpServer {
       trip.booking = booking;
       store.save(trip);
 
-      // Optional: push a real phone notification (ntfy.sh) — the demo's
-      // "watch buzzes on camera" moment. No-op unless NTFY_TOPIC is set.
-      const topic = process.env.NTFY_TOPIC;
+      // Optional real phone notification. This is gated by an exact opt-in so
+      // a NTFY_TOPIC inherited from a developer shell cannot make tests,
+      // verification, or a recording send an external request by accident.
+      const topic = resolveNtfyTopic();
       if (topic) {
         try {
           await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {

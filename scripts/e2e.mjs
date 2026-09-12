@@ -64,6 +64,7 @@ const killProc = (p) =>
   });
 const cleanupProcs = () => Promise.all(children.map(killProc));
 process.on("exit", () => { for (const p of children) { try { p.kill("SIGKILL"); } catch {} } });
+const hermeticEnv = { ...process.env, SDT_ALLOW_NTFY: "0", NTFY_TOPIC: "" };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -120,10 +121,23 @@ let browser = null;
 let browserVersion = null;
 let cardsHttp = null;
 
+// Verification exercises only local services. External fonts fall back to
+// system fonts, matching the isolated film capture.
+async function newLocalPage(options) {
+  const page = await browser.newPage(options);
+  await page.route("**/*", async route => {
+    const url = new URL(route.request().url());
+    const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    if (local || ["data:", "blob:"].includes(url.protocol)) await route.continue();
+    else await route.abort();
+  });
+  return page;
+}
+
 try {
   /* -------- server + production simulator -------- */
   spawnProc(process.execPath, [path.join(root, "packages/server/dist/index.js")], {
-    env: { ...process.env, PORT: String(PORT_SERVER), SDT_DATA_DIR: dataDir },
+    env: { ...hermeticEnv, PORT: String(PORT_SERVER), SDT_DATA_DIR: dataDir },
   });
   spawnProc(process.execPath, [path.join(root, "node_modules/vite/bin/vite.js"), "preview", "--port", String(PORT_PREVIEW), "--strictPort"], {
     cwd: path.join(root, "packages/simulator"),
@@ -134,7 +148,8 @@ try {
 
   browser = await chromium.launch();
   browserVersion = browser.version();
-  const page = await browser.newPage({ viewport: { width: 960, height: 1150 } });
+  // Match the intended 720p capture surface so framing failures are visible.
+  const page = await newLocalPage({ viewport: { width: 1280, height: 720 } });
   page.on("pageerror", (e) => {
     pageErrors.push(String(e).slice(0, 300));
     console.log("[pageerror]", String(e).slice(0, 200));
@@ -165,14 +180,20 @@ try {
   // beat 2 — dog-friendly adjust
   await page.fill("#input", "Make it dog-friendly");
   await page.click("#send");
-  await page.locator(".card-frame").nth(1).waitFor({ state: "attached", timeout: 20000 });
-  await page.waitForTimeout(2500);
+  await page.locator(".card-frame").first().waitFor({ state: "attached", timeout: 20000 });
+  const updatedCard = page.locator(".card-frame").first().contentFrame();
+  await updatedCard.locator("#contract-change").filter({ hasText: "Pepper" }).waitFor({
+    state: "visible",
+    timeout: 20000,
+  });
+  // The Pepper delta is durable state, not a toast; hold past the 5.2s film beat.
+  await page.waitForTimeout(5500);
   const cardCount1 = await page.locator(".card-frame").count();
-  check("adjust → second card render", cardCount1 >= 2);
+  check("adjust → the same card updates in place", cardCount1 === 1);
   await page.screenshot({ path: path.join(frames, "02-dog.png") });
 
   // beat 3 — book from the card (quote sheet)
-  const card2 = page.locator(".card-frame").nth(1);
+  const card2 = page.locator(".card-frame").first();
   const doc2 = card2.contentFrame();
   await doc2.locator("#book-btn").click();
   await doc2.locator("#sheet:not([hidden])").waitFor({ state: "visible", timeout: 8000 });
@@ -281,7 +302,7 @@ try {
   /* -------- expired token (short-TTL server on its own port + data dir) -------- */
   const ttlDir = mkdtempSync(path.join(tmpdir(), "sdt-ttl-"));
   const ttlServer = spawnProc(process.execPath, [path.join(root, "packages/server/dist/index.js")], {
-    env: { ...process.env, PORT: String(PORT_TTL), SDT_DATA_DIR: ttlDir, SDT_QUOTE_TTL_MS: "300" },
+    env: { ...hermeticEnv, PORT: String(PORT_TTL), SDT_DATA_DIR: ttlDir, SDT_QUOTE_TTL_MS: "300" },
   });
   try {
     await waitHttp(`http://localhost:${PORT_TTL}/mcp`);
@@ -319,7 +340,7 @@ try {
   await new Promise((r) => cardsHttp.listen(PORT_CARDS, r));
 
   const previewProbe = async (query) => {
-    const p = await browser.newPage({ viewport: { width: 700, height: 1200 } });
+    const p = await newLocalPage({ viewport: { width: 700, height: 1200 } });
     p.on("pageerror", (e) => pageErrors.push(`preview ${query}: ${String(e).slice(0, 200)}`));
     await p.goto(`http://localhost:${PORT_CARDS}/itinerary/index.html${query}`, { waitUntil: "domcontentloaded" });
     await p.waitForSelector("#book-btn", { timeout: 10000 });
@@ -345,7 +366,7 @@ try {
     );
   }
   {
-    const p = await browser.newPage({ viewport: { width: 700, height: 1200 } });
+    const p = await newLocalPage({ viewport: { width: 700, height: 1200 } });
     p.on("pageerror", (e) => pageErrors.push(`preview=1: ${String(e).slice(0, 200)}`));
     await p.goto(`http://localhost:${PORT_CARDS}/itinerary/index.html?preview=1`, { waitUntil: "domcontentloaded" });
     await p.waitForSelector("#book-btn", { timeout: 10000 });

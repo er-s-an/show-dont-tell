@@ -2,10 +2,10 @@
  * One-command release gate. Runs every verification layer against the current
  * build, hermetically (own servers, temp data dirs, no repo `.data`):
  *
- *   1. unit tests        npm test -w @sdt/server
+ *   1. unit tests (31)   npm test -w @sdt/server
  *   2. smoke (11)        scripts/smoke.mjs against a throwaway server + store
  *   3. restart recall(7) scripts/restart-recall.mjs
- *   4. wire e2e (24)     scripts/e2e.mjs  (needs: npx playwright install chromium)
+ *   4. wire e2e (27)     scripts/e2e.mjs  (needs: npx playwright install chromium)
  *
  *   npm ci && npm run build && npx playwright install chromium && npm run verify
  */
@@ -32,14 +32,15 @@ function run(name, cmd, args, opts = {}) {
 
 const dataDir = mkdtempSync(path.join(tmpdir(), "sdt-verify-"));
 const smokePort = 3031;
+const hermeticEnv = { ...process.env, SDT_ALLOW_NTFY: "0", NTFY_TOPIC: "" };
 
-// stage 1 — unit tests (vitest)
+// stage 1 — unit tests (Node test runner)
 let code = await run("unit tests (npm test -w @sdt/server)", "npm", ["test", "-w", "@sdt/server"]);
 
 // stage 2 — smoke against a throwaway server with a temp store
 if (code === 0) {
   const server = spawn(process.execPath, [path.join(root, "packages/server/dist/index.js")], {
-    env: { ...process.env, PORT: String(smokePort), SDT_DATA_DIR: dataDir },
+    env: { ...hermeticEnv, PORT: String(smokePort), SDT_DATA_DIR: dataDir },
     stdio: "ignore",
   });
   try {
@@ -58,7 +59,7 @@ if (code === 0) {
       await new Promise((r) => setTimeout(r, 250));
     }
     code = await run("smoke (scripts/smoke.mjs)", process.execPath, [path.join(root, "scripts/smoke.mjs")], {
-      env: { ...process.env, SDT_MCP_URL: `http://localhost:${smokePort}/mcp` },
+      env: { ...hermeticEnv, SDT_MCP_URL: `http://localhost:${smokePort}/mcp` },
     });
   } finally {
     server.kill("SIGTERM");
@@ -70,12 +71,12 @@ if (code === 0) {
 
 // stage 3 — cross-process restart recall
 if (code === 0) {
-  code = await run("restart recall (scripts/restart-recall.mjs)", process.execPath, [path.join(root, "scripts/restart-recall.mjs")]);
+  code = await run("restart recall (scripts/restart-recall.mjs)", process.execPath, [path.join(root, "scripts/restart-recall.mjs")], { env: hermeticEnv });
 }
 
 // stage 4 — hermetic wire-level browser e2e
 if (code === 0) {
-  code = await run("browser e2e (scripts/e2e.mjs)", process.execPath, [path.join(root, "scripts/e2e.mjs")]);
+  code = await run("browser e2e (scripts/e2e.mjs)", process.execPath, [path.join(root, "scripts/e2e.mjs")], { env: hermeticEnv });
 }
 
 console.log("\n=== verify summary ===");

@@ -1,0 +1,67 @@
+{
+  "status": "PASS",
+  "verifiedAt": "2026-09-12T08:49:52.360636+00:00",
+  "upstreamBase": "5c43b0eeff6c0c001ba20d0fce9e6c8b6792a884",
+  "node": "v25.9.0",
+  "npm": "11.12.1",
+  "installation": "npm ci --offline --ignore-scripts --no-audit --no-fund",
+  "build": "PASS",
+  "tests": {
+    "unit": {
+      "passed": 31,
+      "total": 31
+    },
+    "smoke": {
+      "passed": 11,
+      "total": 11
+    },
+    "processRestartRecall": {
+      "passed": 7,
+      "total": 7
+    },
+    "browserE2E": {
+      "passed": 27,
+      "total": 27
+    }
+  },
+  "externalNotifications": "disabled; SDT_ALLOW_NTFY=0 and empty NTFY_TOPIC",
+  "testBrowserNetwork": "non-local requests blocked; system-font fallback",
+  "originalCheckoutUnchanged": true,
+  "applicationCodeMatchesFilmCapture": true,
+  "applicationAndHarnessSha256": {
+    "package-lock.json": "7b7d0b63564e1b832e1db408db1ec545219dedb2ced64f2b966aadca00e829f8",
+    "package.json": "c7a3bf60be4bb4f1cd47aa668064fe0317529873c926257ace9bfdfb437f1734",
+    "packages/cards/itinerary/index.html": "7c1bfcb328a256824ef22377a1a9de5d95737c0b48bc09a5b9cd9e055a288a66",
+    "packages/cards/itinerary/main.ts": "747e9db6ec66af3fe3c58aefb52ee2dcc113e4e5c868342595a660607d5d11b2",
+    "packages/cards/package.json": "a26f9a73546f5360c17565c3e592135da17d86e058521e03b0cfacbff48ed4e2",
+    "packages/cards/shared/design-system.css": "0e2d96290768a95ad5236b6b84e863dc2a9089061abb372e42df74f7cbdaf2e9",
+    "packages/cards/shared/icons.ts": "bbcdc13808c28a828e384d2e2e7f080b1413a1fc983018373db8a09ad7c8406a",
+    "packages/cards/vite.config.ts": "a58d0b0ffffe406f57178e50e887d71ac84b49f99ce3cb1054b441876c02d3af",
+    "packages/server/package.json": "4fa42f912cf56a5c13d6cc33cea5b73f28dcff1fb731cf20df052e965df0a805",
+    "packages/server/src/data/napa.ts": "cd24db0934480ed01c9711515bd857c401ce60ca238da6126a55dbac03ee26df",
+    "packages/server/src/engine.ts": "8867c887726b8314c8d416650295c4d6ef581f2a9c8a1c72b5f1716ddee5ae34",
+    "packages/server/src/index.ts": "fd31f1211d6c793af48d9335e504f4ed15de9f7cf389e1f9516f4f5bfaccc32d",
+    "packages/server/src/notifications.ts": "671a6179536c6e85612a68b79230a6c09517fedee8837d2e5ac5f4ba4aa2afac",
+    "packages/server/src/server.ts": "ea5b334ab9871536ccfc45fcd9e1356e8544fe49bcab52458d598a4300f73e32",
+    "packages/server/src/state/store.ts": "d890a67e34cfefd2aa9da96a10b83be3b539f7f79870e8ef42a615e609c4f80e",
+    "packages/server/src/test/engine.test.ts": "4fa3f4982633532597d3ff28c7103e07bd19469bbfd454c1786a4582eba026e0",
+    "packages/server/src/test/notifications.test.ts": "774a9a8f8bce475b0d9e5c18df7e31eae1dc2f57150ef41c653bf74da78d4961",
+    "packages/server/src/test/store.test.ts": "f75ed09fea8229ff77995e82d868d957620df291a0837cf4bec38c57e159dad4",
+    "packages/simulator/index.html": "2c2acf846a11f0e652ca9f4a2022447b409e1e4310c726f2dda32888f7f9e40e",
+    "packages/simulator/package.json": "422928fda855ff76de9f43b4d57ca6c7fcbfe459bc6ff2c9bb7a4dddfac71c4d",
+    "packages/simulator/src/demo.ts": "f26ad0a605b628304f89a9b76ef4cd4927aba9589b51d3bea32ef335d75e83a7",
+    "packages/simulator/src/host.ts": "9c0d3f977b3bdebfbd1e278bea0aa54d6a9b6ed3d9d5e7e9bc1cceb9bf541627",
+    "packages/simulator/src/main.ts": "29d99e5868f54911e740f21969da525cb536a2854ba14b27d35f831b17a47417",
+    "packages/simulator/src/mcp.ts": "fb63e93fdf5c0ff1cce3f47fec8ef62c8975a683456a94e2058d559853463fa3",
+    "packages/simulator/src/planner.ts": "606b1c740afc0cc1fcac7f55dea5d583d0667a218f0f4721bf7e4cd0216d67cb",
+    "packages/simulator/src/styles.css": "66a9d8ef55c21730332d7064b442e36fbe3fb128a43586f2ef355dcebeffafc3",
+    "packages/simulator/src/vite-env.d.ts": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+    "packages/simulator/vite.config.ts": "f180da74e4157cc8a253c065986e001f5334e7df29ca9b00018d014486527d1e",
+    "scripts/e2e.mjs": "175ea4e5acc5de3061ddec7eb84706825fbaef8eb1ee05fe9f3db1aabe8517b3",
+    "scripts/record-demo.mjs": "6102d54d8d4704e1dcf204e293296210aa75d4f95796004141db8dca39b77353",
+    "scripts/restart-recall.mjs": "1dbe6397b0a59e93a57e8b6a80689a5d4cdd280e35af0ef072235bdd46b9f2ce",
+    "scripts/smoke.mjs": "d6e53343a26bc92e50fbc313916ced5ec3f2f1857a5fca9c7c15c6cd1430e99e",
+    "scripts/verify.mjs": "0a865ae488bdf7dacae67b3c1b6d53d527153a430b1e116e4e366fbd7dadbb80"
+  },
+  "scope": "Fresh local source-release validation on Node 25.9.0. Simulated host/speech/inventory/bookings. Not an Alexa+ host test, live hotel reservation, payment, device delivery, video upload, or Devpost receipt."
+}

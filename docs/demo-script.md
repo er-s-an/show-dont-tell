@@ -1,65 +1,59 @@
-# Demo video script — "Show, Don't Tell"
+# Final English film script
 
-**Submitted asset:** `docs/demo-video/show-dont-tell-demo.webm` — 71 s, 1280×720,
-VP8, no audio track, burned-in English captions (rules allow captioned demos; a
-voiceover is not required). **Length is comfortably under the 3:00 limit.**
+**Show, Don't Tell — Room for One More · 128 seconds.**
 
-**How it is made (fully reproducible):**
+This completed review film combines the recorded local MCP/card flow with editorial animation. Maya and Pepper are a synthetic story. Alexa+ speech and host, venue inventory, and bookings are simulated. No payment, hotel reservation, or device notification occurs.
 
-```bash
-npm run build
-node scripts/record-demo.mjs
-```
+## 0–12s · A weekend for two.
 
-The harness is hermetic: it spawns its own MCP server against a throwaway
-`SDT_DATA_DIR`, serves the **production** simulator build (`vite preview`), and
-exposes `window.sdtControl.{killServer,startServer}` so the in-page demo script
-(`packages/simulator/src/demo.ts`) can kill and restart the server mid-flow —
-for real, on camera. Nothing in the video is mocked, and the booking that
-appears at the end is readable from the same on-disk trip store the whole time.
+Maya is planning a weekend away with her partner. Two days to explore. A place to stay. One plan that holds everything together.
 
-## Ground rules (enforced by the recording itself)
+Evidence boundary: Synthetic Maya persona. Actual plan capture provides the card; typography and paper world are editorial illustrations.
 
-- The simulator takes **typed text**; it stands in for speech. There is no
-  speech-to-text anywhere, and no caption implies one.
-- A persistent corner tag reads **`Simulated Alexa+ surface · fixture data ·
-  nothing is charged`** for the entire video, plus the `SIMULATED` badge in the
-  app bar. A live **MCP wire overlay** lists every `tools/call` as it happens —
-  including the one that fails.
-- The video shows the strongest engineering, not just the UI: the server is
-  killed mid-flow, the card **fails closed** (error toast, no fake success),
-  the server restarts on the same store, and the same quote+token then
-  confirms. The booking is then recalled in a new "day".
-- No phone/watch claims: the optional ntfy.sh push is documented in the README
-  and `docs/product-feedback.md`, but no device is shown and no caption claims
-  a push. (It fires only when `NTFY_TOPIC` is set; it was unset here.)
-- The dataset is a curated fixture and says so on screen; no live inventory,
-  no real reservation, no payment.
+## 12–26s · Plan a weekend in Napa for two.
 
-## Shot list (as recorded)
+In this Alexa Plus simulation, Maya types instead of speaking. A deterministic phrase router sends her request to the trip-planning tool.
 
-| Time | Beat | Caption on screen | Wire overlay shows |
-|---|---|---|---|
-| 0:00–0:06 | Hook | `Voice assistants are great at timers. But ask for a weekend away…` → `…and the answer talks **at** you for two minutes. Let's fix that.` | — |
-| 0:06–0:15 | The ask | `**Show, Don't Tell** — every complex answer becomes an interface.` (types *"Plan a weekend in Napa for two"*) | `plan-weekend-trip` |
-| 0:15–0:21 | Card is the answer | `A real MCP server (spec 2025-11-25, Streamable HTTP) plans the trip. The card **is** the answer.` | — |
-| 0:21–0:29 | Adjust in place | (types *"Make it dog-friendly"*) `Adjust in place. Same card, new constraints — the balloon ride can't take a dog, so it's out.` | `adjust-trip` |
-| 0:29–0:33 | Quote, not charge | `Booking is two calls on purpose. First a quote — **nothing is booked yet.**` Confirm sheet: `Nothing is booked until you confirm. Quote held for 10 minutes.` | `book-hotel` |
-| 0:33–0:36 | Kill | `Now the server dies mid-flow. Watch what the card does…` (server process killed) | — |
-| 0:36–0:41 | **Fail closed** | `**Fail closed.** No fake success, no made-up code — the sheet stays open for a retry.` Red toast in the card: `Confirmation failed — no booking was made. Please try again.` | `confirm-booking` (the failed attempt, on the wire) |
-| 0:41–0:44 | Restart | `Server restarts — new process, same on-disk trip store.` | — |
-| 0:44–0:50 | Retry confirms | `Same quote, same token — now it confirms. The code came from the **server**, not the card.` Green panel: `Booked · $332 · Confirmation NP-XXXXXX` | second `confirm-booking` |
-| 0:50–0:53 | New day | `Next morning.` (Day 2, fresh thread) | full history visible |
-| 0:53–1:00 | Recall | (types *"What was that hotel we booked?"*) `New day, new session — **same memory**, from the trip store.` | `list-trips`, `get-trip` |
-| 1:00–1:05 | Proof | `The booking survived a kill and a restart — confirmation code and all.` (scrolls to the intact confirmation) | — |
-| 1:05–1:09 | Stack | `Open standards end to end: **MCP · MCP Apps · Agent Skills**.` | — |
-| 1:09–1:12 | Close | `**Show, don't tell.**` | — |
+Evidence boundary: Actual MCP tools/call traffic and runtime capture; planner.ts uses a deterministic phrase router, not a model agent.
 
-## If a richer human-recorded cut is ever wanted
+## 26–39s · A plan she can see.
 
-Same beats, same truth constraints: keep the corner tag, keep the wire overlay,
-keep the kill/restart act, never caption typed text as speech, never show or
-imply a capability that isn't in the build (no Alexa device rendering, no real
-reservation, no device push unless the device and receipt are actually on
-camera). Record at 1080p60 if the hardware allows; the current 720p25 webm is
-the verified reference.
+The MCP server scores the example venues and returns an interactive card. Stops, stays, and an estimated total appear together, so Maya can compare them.
+
+Evidence boundary: engine.ts filters and scores hand-written Napa data. MCP Apps card implementation is real; inventory is simulated.
+
+## 39–50s · Pepper is coming too.
+
+Then Maya looks at Pepper, the dog they just adopted. The weekend needs room for her, too. Make it dog-friendly.
+
+Evidence boundary: Synthetic story; actual request text supported by planner.ts and adjust-trip.
+
+## 50–68s · Same card. A different weekend.
+
+That small change reaches the server as an adjustment to the existing trip. Places that cannot take a dog leave the plan. Suitable choices replace them. The same card updates.
+
+Evidence boundary: main.ts activeCard path and current actual UI capture; adjust-trip and engine scoring on local MCP wire.
+
+## 68–81s · A little more room for life.
+
+Nine activities become eight. Three stays become two. The estimate changes with the itinerary. Pepper joins, and Maya keeps the context of her plan.
+
+Evidence boundary: Captured fixture delta 9→8 activities,3→2 stays,$1,369→$609. Revised estimate, not a demonstrated savings claim.
+
+## 81–99s · A moment to decide.
+
+Maya chooses a stay. The card opens a quote: one night, fees, total. She reviews it, then confirms with a separate click. This booking is simulated. No hotel is reserved, and no money moves.
+
+Evidence boundary: Actual card review flow. Server validates pending state and expiring token, not human identity or universal agent turn separation.
+
+## 99–115s · The conversation restarts. The plan stays.
+
+The next morning, Maya starts a new transcript using the same simulated identity. What did we book? The server returns her saved itinerary, with the same receipt attached.
+
+Evidence boundary: New day retains conversationId; list-trips/get-trip return file-backed state. No new authenticated session claim.
+
+## 115–128s · Say what changes. See the plan adapt.
+
+A request becomes a plan. A new detail changes it. A decision remains visible. Show, Don't Tell. Say what changes. See the plan adapt.
+
+Evidence boundary: Review film of current local prototype; actual Alexa+ host integration is not verified. Agent Skill included, not runtime loaded.

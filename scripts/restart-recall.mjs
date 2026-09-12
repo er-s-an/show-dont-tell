@@ -36,7 +36,13 @@ async function rpc(method, params = {}) {
 
 function startServer() {
   const proc = spawn("node", [path.join(root, "packages/server/dist/index.js")], {
-    env: { ...process.env, PORT: String(PORT), SDT_DATA_DIR: dataDir },
+    env: {
+      ...process.env,
+      PORT: String(PORT),
+      SDT_DATA_DIR: dataDir,
+      SDT_ALLOW_NTFY: "0",
+      NTFY_TOPIC: "",
+    },
     stdio: "ignore",
   });
   return proc;

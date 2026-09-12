@@ -1,39 +1,98 @@
-# Friction Log — Build, Ship, Shape (Alexa+ Track)
+# Friction Log — Show, Don't Tell
 
-> 比赛规则:friction log 最高 +10% 加分。每条记录:任务、步骤、预期 vs 实际、严重度、workaround、建议。
+Build, Ship, Shape: Amazon Developer Hackathon — Alexa+ track.
 
-## #1 registerAppTool 对无 UI 的 tool 直接崩溃(2026-09-11)
+These entries preserve the project's dated September 11–12, 2026 development findings. This English edition was prepared on September 12 from the local friction log and refreshed product-feedback document. It does not represent a new run of the original development experiments or a check of upstream release/PR status.
 
-- **任务**:在 MCP server 上注册两个 tool,其中一个不带 UI 资源
-- **预期**:`_meta` 不传或传 `{}` 都能正常工作(无 UI 的 tool 是合法形态)
-- **实际**:不传 `_meta` 时,首个请求即 `TypeError: Cannot read properties of undefined (reading 'ui')`(ext-apps v2.0.0 的 `registerAppTool` 直接读 `config._meta.ui`,无防御)
-- **严重度**:Medium(运行时崩溃,但报错信息能定位)
-- **Workaround**:给所有 tool 传 `_meta: {}`
-- **建议**:helper 里加 `config._meta ?? {}` 防御,或在 TS 类型上把 `_meta` 标为必填
+The demonstrated build uses MCP 2025-11-25 over Streamable HTTP. A newer-protocol migration is proposed and is outside the film build. The MCP server and card are real; the Alexa+-style host, speech input, inventory and booking commitments are simulated. The deterministic router is not a model-powered autonomous agent, and the included Agent Skill is not loaded by a model host.
 
-## #2 ext-apps starter template 构建脚本隐式依赖 bun(2026-09-11)
+## 1. Omitted metadata crashes a text-only tool
 
-- **任务**:按 README 构建 basic-server-vanillajs 模板
-- **预期**:README "Getting Started" 只写了 Node.js 20+,`npm run build` 应可运行
-- **实际**:build script 内含 `bun build server.ts ...`,无 bun 环境直接失败;README 未提及 bun 是前置条件
-- **严重度**:Low(报错明确,装 bun 即解)
-- **Workaround**:`brew install bun` 或用 tsc/esbuild 替代
-- **建议**:README 前置条件列出 bun,或构建脚本改用 Node 生态工具
+Recorded: 2026-09-11 · Severity: Medium
 
-## #3 MCP SDK v2 的"双纪元"陷阱:2026-07-28 不是默认开启的(2026-09-11)
+**Task attempted:** Register an MCP tool without a UI resource.
 
-- **任务**:让自托管 MCP server 按 2026-07-28 规范(无状态核心、server/discover)提供服务
-- **预期**:官方 SDK v2.0.0 "支持 2026-07-28"意味着默认按最新规范握手
-- **实际**:SDK v2.0.0 采用双纪元设计——`McpServer.connect()` + 传统 transport 会把实例**绑定为 2025 纪元**;只有 `createMcpHandler`(HTTP)/ `serveStdio` 入口才标记为现代纪元。用 2026-07-28 头发请求会被拒,`server/discover` 返回 -32601。这一关键事实不在 getting-started 文档里,需要读 SDK 内部注释才能发现
-- **严重度**:Medium(不影响合标——比赛最低要求是 2025-11-25;但"用新版"需要重写 server 入口)
-- **Workaround**:保守选择按 2025-11-25 提供服务(满足比赛要求);`createMcpHandler` 迁移留作 next step
-- **建议**:在 SDK 的 migration guide 首页显著位置说明纪元分裂机制;"supports 2026-07-28" 的公告应注明"仅新入口"
+**Steps taken:**
 
-## #4 `node --test` 的 glob 行为跨大版本不一致,`engines >=20` 无法直接达成(2026-09-12)
+1. Register a tool with ext-apps 2.0.0 registerAppTool and omit _meta.
+2. Start the server and make the initial request.
 
-- **任务**:按 `engines: >=20` 声明,在 Node 20 / 22 / 25 矩阵上跑同一套测试命令
-- **预期**:`node --test "dist/test/*.test.js"`(Node 侧展开 glob)或 `node --test dist/test/`(目录形式)在声明范围内表现一致
-- **实际**:Node 20(v20.20.2)的 test runner 不展开任何 glob,报 `Could not find '…/dist/test/*.test.js'`;Node 22.0 把目录参数当作单个测试文件解析(`dist/test:1:1` 解析失败)。三种写法在两个大版本上各死一种
-- **严重度**:Low(仅测试入口;但对"fresh clone 一条命令验证"的评委路径是直接阻塞)
-- **Workaround**:用 shell 展开的不加引号 glob——`node --test dist/test/*.test.js`,20/22/25 全部通过
-- **建议**:Node 文档的 --test 章节应给出跨版本矩阵支持表;在没有之前,`engines >=20` 的项目别依赖 runner 侧 glob
+**Expected result:** Optional metadata may be omitted; a text-only tool can register.
+
+**Actual result:** The dated log records TypeError: Cannot read properties of undefined (reading 'ui').
+
+**Workaround:** Pass _meta: {} for the text-only tool.
+
+**Actionable suggestion:** Normalize config._meta to an empty object and add regression tests for omitted and empty metadata.
+
+**Evidence scope:** Recorded local issue; the feedback refresh also inspected the installed helper. No current upstream merge status is claimed.
+
+**Related contribution:** [ext-apps PR #775](https://github.com/modelcontextprotocol/ext-apps/pull/775) is the recorded contribution URL. The proposal adds `config._meta ?? {}` and a regression test. Acceptance or merge is not claimed.
+
+## 2. Starter build has an undocumented Bun prerequisite
+
+Recorded: 2026-09-11 · Severity: Low
+
+**Task attempted:** Build the basic-server-vanillajs starter on its Node-oriented setup path.
+
+**Steps taken:**
+
+1. Follow the inspected starter README on an environment with Node but no Bun.
+2. Run the provided build script.
+
+**Expected result:** The documented Node prerequisites are enough to run the build.
+
+**Actual result:** The inspected package script invokes bun build; the dated log records failure without Bun.
+
+**Workaround:** Install Bun or use a Node-based bundling step.
+
+**Actionable suggestion:** List Bun as a prerequisite or change the script to match the documented Node-only path; add a clean-environment starter build check.
+
+**Evidence scope:** Applies to the inspected template snapshot, not a claim about every current starter.
+
+## 3. SDK entry point obscures the served protocol revision
+
+Recorded: 2026-09-11 · Severity: Medium
+
+**Task attempted:** Determine the revision actually served by the installed SDK entry.
+
+**Steps taken:**
+
+1. Construct McpServer with the existing Streamable HTTP transport.
+2. Probe with a 2026-07-28 request and server/discover.
+3. Compare the default entry with the separate newer-entry experiment recorded in the debug notes.
+
+**Expected result:** A supported revision and the entry point required to serve it are explicit in the setup documentation.
+
+**Actual result:** The dated notes report a rejected newer-version request and server/discover error on the original entry; the current installed SDK exports 2025-11-25 as its default.
+
+**Workaround:** Keep the submission at MCP 2025-11-25; leave the newer serving-entry migration proposed.
+
+**Actionable suggestion:** Publish an entry-point/revision matrix, log the served revision, and add a version assertion to the reference smoke example.
+
+**Evidence scope:** The newer-entry experiment is historical and outside the film build; it was not rerun for this preparation.
+
+## 4. Node test-entry patterns vary across supported major versions
+
+Recorded: 2026-09-12 · Severity: Low
+
+**Task attempted:** Run the same test command on the project's declared Node 20/22/25 range.
+
+**Steps taken:**
+
+1. Try a quoted test glob and a directory argument in the dated Node matrix.
+2. Change the command to an unquoted shell-expanded glob.
+
+**Expected result:** One documented test command works across the declared engine range.
+
+**Actual result:** The dated log records a literal-glob file-not-found on Node 20 and a directory parse failure on Node 22.0; the shell-expanded form passed the recorded matrix.
+
+**Workaround:** Use node --test dist/test/*.test.js with shell expansion.
+
+**Actionable suggestion:** Document a version support table for test-runner path/glob handling and provide a portable command in projects declaring broad engine support.
+
+**Evidence scope:** Historical recorded matrix; no new Node matrix run is claimed.
+
+## Further product feedback
+
+The separate [product feedback](docs/product-feedback.md) also describes the unverified actual Alexa+ host integration, continuing-card sizing/update needs and the distinction between an interface confirmation step and authenticated user authorization. Those are bounded feedback topics, not assertions that a production host has a particular capability or defect.
